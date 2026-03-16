@@ -4,8 +4,6 @@ import { renderToResourceTree, collectHookKeys } from "../renderer.js";
 import { pulumiToComponent } from "../wrap.js";
 import { installInterceptor } from "../state-interceptor.js";
 import { loadState, collectState, resetState } from "../state-store.js";
-import type { ResourceNode } from "../resource-tree.js";
-import { ROOT_TYPE } from "../resource-tree.js";
 
 // Mock resource
 class MockInstance {
@@ -17,19 +15,7 @@ class MockInstance {
   }
 }
 
-const Instance = pulumiToComponent(MockInstance as never, "aws:ec2:Instance");
-
-/** Recursively collect all resource nodes */
-function collectResources(node: ResourceNode): ResourceNode[] {
-  const result: ResourceNode[] = [];
-  if (node.kind === "resource" && node.type !== ROOT_TYPE) {
-    result.push(node);
-  }
-  for (const child of node.children) {
-    result.push(...collectResources(child));
-  }
-  return result;
-}
+const [Instance] = pulumiToComponent(MockInstance as never, "aws:ec2:Instance");
 
 beforeEach(() => {
   resetState();
@@ -41,18 +27,19 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedCount = -1;
     function App() {
       const [count] = useState(1);
+      capturedCount = count;
       return Array.from({ length: count }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: "t3.micro" }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(5); // persisted value is 5, not default 1
+    expect(capturedCount).toBe(5); // persisted value, not default 1
   });
 
   it("useState returns default when no persisted state", () => {
@@ -60,18 +47,19 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedCount = -1;
     function App() {
       const [count] = useState(3);
+      capturedCount = count;
       return Array.from({ length: count }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: "t3.micro" }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(3); // default value
+    expect(capturedCount).toBe(3); // default value
   });
 
   it("cleanup restores original useState behavior", () => {
@@ -84,16 +72,17 @@ describe("state-interceptor", () => {
     resetState();
     loadState({ keys: [], values: [] });
 
+    let capturedCount = -1;
     function App() {
       const [count] = useState(2);
+      capturedCount = count;
       return Array.from({ length: count }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: "t3.micro" }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(2); // default, not intercepted
+    renderToResourceTree(createElement(App));
+    expect(capturedCount).toBe(2); // default, not intercepted
   });
 
   it("handles multiple useState hooks in one component", () => {
@@ -101,20 +90,23 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedCount = -1;
+    let capturedType = "";
     function App() {
       const [count] = useState(1);
       const [type] = useState("t3.micro");
+      capturedCount = count;
+      capturedType = type;
       return Array.from({ length: count }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: type }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(3);
-    expect(resources[0].props.instanceType).toBe("t3.large");
+    expect(capturedCount).toBe(3);
+    expect(capturedType).toBe("t3.large");
   });
 
   it("handles useState with lazy initializer function", () => {
@@ -122,18 +114,19 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedCount = -1;
     function App() {
       const [count] = useState(() => 2); // lazy init
+      capturedCount = count;
       return Array.from({ length: count }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: "t3.micro" }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(7); // persisted, not lazy default
+    expect(capturedCount).toBe(7); // persisted, not lazy default
   });
 
   it("does not interfere with useMemo", () => {
@@ -141,20 +134,21 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedDoubled = -1;
     function App() {
       const [count] = useState(1);
       const doubled = useMemo(() => count * 2, [count]);
+      capturedDoubled = doubled;
       return Array.from({ length: doubled }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: "t3.micro" }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
     // count=4 (persisted), doubled=8
-    expect(resources).toHaveLength(8);
+    expect(capturedDoubled).toBe(8);
   });
 
   it("does not interfere with useRef", () => {
@@ -162,20 +156,23 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedCount = -1;
+    let capturedRef = "";
     function App() {
       const [count] = useState(1);
       const ref = useRef("hello");
+      capturedCount = count;
+      capturedRef = ref.current;
       return Array.from({ length: count }, (_, i) =>
         createElement(Instance, { key: i, name: `web-${i}`, instanceType: ref.current }),
       ) as unknown as React.ReactElement;
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(2);
-    expect(resources[0].props.instanceType).toBe("hello");
+    expect(capturedCount).toBe(2);
+    expect(capturedRef).toBe("hello");
   });
 
   it("handles persisted boolean state", () => {
@@ -183,17 +180,18 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedEnabled = false;
     function App() {
       const [enabled] = useState(false);
+      capturedEnabled = enabled;
       if (!enabled) return null;
       return createElement(Instance, { name: "web-0", instanceType: "t3.micro" });
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources).toHaveLength(1); // enabled=true from persisted
+    expect(capturedEnabled).toBe(true); // enabled=true from persisted
   });
 
   it("handles persisted string state", () => {
@@ -201,16 +199,17 @@ describe("state-interceptor", () => {
 
     const cleanup = installInterceptor();
 
+    let capturedRegion = "";
     function App() {
       const [region] = useState("us-east-1");
+      capturedRegion = region;
       return createElement(Instance, { name: "web-0", region });
     }
 
-    const tree = renderToResourceTree(createElement(App));
+    renderToResourceTree(createElement(App));
     cleanup();
 
-    const resources = collectResources(tree);
-    expect(resources[0].props.region).toBe("us-west-2");
+    expect(capturedRegion).toBe("us-west-2");
   });
 });
 

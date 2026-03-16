@@ -4,37 +4,55 @@
 
 ### `pulumiToComponent(ResourceClass, typeToken?)`
 
-Wraps a Pulumi resource class as a React host component.
+Wraps a Pulumi resource class as a React component with Context support.
 
 ```tsx
 import { pulumiToComponent } from "@react-pulumi/core";
 import * as aws from "@pulumi/aws";
 
 // Auto-extract type token from __pulumiType static property
-const Bucket = pulumiToComponent(aws.s3.Bucket);
+const [Bucket, BucketCtx] = pulumiToComponent(aws.s3.Bucket);
 
 // Or specify explicitly
-const Instance = pulumiToComponent(aws.ec2.Instance, "aws:ec2:Instance");
+const [Instance, InstanceCtx] = pulumiToComponent(aws.ec2.Instance, "aws:ec2:Instance");
+
+// Leaf resources — Context can be ignored
+const [Lambda] = pulumiToComponent(aws.lambda.Function);
 ```
 
 **Parameters:**
 - `ResourceClass` — Pulumi resource constructor (e.g., `aws.s3.Bucket`)
 - `typeToken` *(optional)* — Pulumi type token string. Auto-extracted from `ResourceClass.__pulumiType` if omitted.
 
-**Returns:** A string token that JSX treats as a host component. All resource args become JSX props.
+**Returns:** `[Component, Context]`
+- `Component` — React FC that creates the Pulumi resource at render time and provides the instance via Context
+- `Context` — `React.Context<InstanceType<T>>` for descendants to read the instance via `useContext`
 
 **JSX Props:**
 - All resource constructor args (second parameter) as `Partial<Args>`
 - `name` — Pulumi logical name (defaults to type token)
-- `opts` — Pulumi resource options (`protect`, `ignoreChanges`, `dependsOn`, etc.)
-- `children` — nested resources become Pulumi children
+- `opts` — Pulumi resource options (`protect`, `ignoreChanges`, `dependsOn`, `provider`, etc.)
+- `children` — ReactNode (Context mode) or `(instance) => ReactNode` (render props mode)
 - `key` — React key (stripped by React, not passed to Pulumi)
+
+**Children modes:**
+```tsx
+// Context mode — descendants use useContext(BucketCtx)
+<Bucket name="assets">
+  <ChildComponent />
+</Bucket>
+
+// Render props mode — instance passed directly
+<Bucket name="assets">
+  {(bucket) => <BucketObject name="index" bucket={bucket.id} />}
+</Bucket>
+```
 
 ---
 
 ### `renderToPulumi(Component)`
 
-Wraps a React component for use as a standard Pulumi program. Handles the full lifecycle: state hydration, rendering, materialization, and state persistence.
+Wraps a React component for use as a standard Pulumi program. Handles the full lifecycle: state hydration, rendering, and state persistence.
 
 ```tsx
 import * as pulumi from "@pulumi/pulumi";
@@ -55,11 +73,10 @@ renderToPulumi(App)();
 **Lifecycle:**
 1. Read persisted state from `Pulumi.<stack>.yaml` (`react-pulumi:state` config key)
 2. Install `useState` interceptor (hydrate from persisted values)
-3. Render component tree synchronously
+3. Render component tree synchronously — resources are created at render time as side effects
 4. Validate hook keys against previous state (warn on structure change)
-5. Materialize resource tree into real Pulumi resources
-6. Create dynamic resource to write state back on deploy success
-7. Reset all caches (state, config, stack refs)
+5. Create dynamic resource to write state back on deploy success
+6. Reset all caches (state, config, stack refs)
 
 **Requires:** `setPulumiSDK(pulumi)` must be called before `renderToPulumi(App)()`.
 
@@ -85,7 +102,7 @@ Must be called once before using `renderToPulumi` or custom hooks.
 
 ### `renderToResourceTree(element, opts?)`
 
-Low-level: renders a React element into a `ResourceNode` tree without materializing Pulumi resources. Used by `renderToPulumi` internally and by the CLI.
+Low-level: renders a React element and triggers resource creation (as side effects of components returned by `pulumiToComponent`). Also builds a fiber tree for hook key extraction and viz.
 
 ```tsx
 import { createElement } from "react";
@@ -104,7 +121,7 @@ const tree = renderToResourceTree(createElement(App));
 
 ### `materializeTree(root, registryOverride?)`
 
-Low-level: walks a `ResourceNode` tree and instantiates real Pulumi resources with parent-child relationships.
+Low-level: walks a `ResourceNode` tree (from the old host-component path) and instantiates Pulumi resources. Retained for backward compatibility with the CLI's legacy host-component mode.
 
 ```tsx
 import { materializeTree } from "@react-pulumi/core";
@@ -113,7 +130,7 @@ const resources = materializeTree(tree);
 ```
 
 **Parameters:**
-- `root` — `ResourceNode` tree (from `renderToResourceTree`)
+- `root` — `ResourceNode` tree (from `renderToResourceTree` using host component strings)
 - `registryOverride` *(optional)* — custom type token → constructor map
 
 **Returns:** `unknown[]` — array of created Pulumi resource instances
@@ -247,8 +264,8 @@ Any wrapped Pulumi resource accepts an `opts` prop for Pulumi resource options:
   opts={{
     protect: true,
     ignoreChanges: ["tags"],
-    dependsOn: ["config-bucket"],
-    provider: "us-west",
+    dependsOn: [someBucket],
+    provider: myProvider,
   }}
 />
 ```
@@ -262,36 +279,44 @@ Any wrapped Pulumi resource accepts an `opts` prop for Pulumi resource options:
 | `deleteBeforeReplace` | `boolean` | Delete before creating replacement |
 | `retainOnDelete` | `boolean` | Keep resource when removed from code |
 | `aliases` | `string[]` | Alternative URNs for state migration |
-| `provider` | `string` | Provider name (resolved during materialization) |
-| `dependsOn` | `string[]` | Explicit dependencies by resource name |
+| `provider` | `unknown` | Provider instance (from Context or render props) |
+| `dependsOn` | `unknown[]` | Explicit dependencies (resource instances) |
+| `parent` | `unknown` | Parent resource instance |
 | `customTimeouts` | `object` | `{ create?, update?, delete? }` timeout strings |
 
 ---
 
-## Provider Scoping
+## Cross-Resource Output Wiring
 
-Wrap resources in a provider component to override the default provider for a package:
+With `pulumiToComponent` returning `[Component, Context]`, you can wire Pulumi Outputs between resources naturally:
 
 ```tsx
-const AwsProvider = pulumiToComponent(aws.Provider);
+const [Vcn, VcnCtx] = pulumiToComponent(oci.core.Vcn);
+const [Subnet] = pulumiToComponent(oci.core.Subnet);
+
+// Context mode
+function SubnetLayer() {
+  const vcn = useContext(VcnCtx);
+  return <Subnet name="pub" vcnId={vcn.id} cidrBlock="10.0.0.0/20" />;
+}
 
 function App() {
   return (
-    <AwsProvider name="us-west" region="us-west-2">
-      <Bucket name="west-bucket" />
+    <Vcn name="main" cidrBlock="10.0.0.0/16">
+      <SubnetLayer />
+    </Vcn>
+  );
+}
 
-      <AwsProvider name="us-east" region="us-east-1">
-        <Bucket name="east-bucket" />
-      </AwsProvider>
-    </AwsProvider>
+// Render props mode
+function SimpleApp() {
+  return (
+    <Vcn name="main" cidrBlock="10.0.0.0/16">
+      {(vcn) => <Subnet name="pub" vcnId={vcn.id} cidrBlock="10.0.0.0/20" />}
+    </Vcn>
   );
 }
 ```
-
-- Provider type tokens matching `pulumi:providers:<pkg>` are auto-detected
-- Inner providers override outer for the same package
-- Provider flows via `opts.provider`, not parent-child relationship
-- Propagates through transparent React component boundaries
 
 ---
 
@@ -334,8 +359,10 @@ interface ResourceOpts {
   deleteBeforeReplace?: boolean;
   retainOnDelete?: boolean;
   aliases?: string[];
-  provider?: string;
-  dependsOn?: string[];
+  provider?: unknown;
+  dependsOn?: unknown[];
+  parent?: unknown;
   customTimeouts?: { create?: string; update?: string; delete?: string };
+  [key: string]: unknown;
 }
 ```

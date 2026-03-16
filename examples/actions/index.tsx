@@ -2,8 +2,8 @@ import React from "react";
 import { pulumiToComponent, Action } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
 
-const RandomPet = pulumiToComponent(random.RandomPet);
-const RandomString = pulumiToComponent(random.RandomString);
+const [RandomPet] = pulumiToComponent(random.RandomPet);
+const [RandomString] = pulumiToComponent(random.RandomString);
 
 // A component that declares both infrastructure AND operational actions
 function ApiService({ name, replicas = 2 }: { name: string; replicas?: number }) {

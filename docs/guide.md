@@ -14,7 +14,7 @@ import { pulumiToComponent, renderToPulumi, setPulumiSDK, useConfig } from "@rea
 import * as aws from "@pulumi/aws";
 
 setPulumiSDK(pulumi);
-const Instance = pulumiToComponent(aws.ec2.Instance);
+const [Instance] = pulumiToComponent(aws.ec2.Instance);
 
 function App() {
   const [replicas] = useState(2);
@@ -50,7 +50,7 @@ import React from "react";
 import { pulumiToComponent } from "@react-pulumi/core";
 import * as aws from "@pulumi/aws";
 
-const Instance = pulumiToComponent(aws.ec2.Instance);
+const [Instance] = pulumiToComponent(aws.ec2.Instance);
 
 export default function App() {
   return <Instance name="web-0" instanceType="t3.micro" />;
@@ -232,7 +232,7 @@ State keys use the format `ComponentName:localHookIndex` (e.g., `App:0`, `WebTie
 Override the default Pulumi provider for a cloud package by wrapping resources:
 
 ```tsx
-const AwsProvider = pulumiToComponent(aws.Provider);
+const [AwsProvider] = pulumiToComponent(aws.Provider);
 
 function App() {
   return (

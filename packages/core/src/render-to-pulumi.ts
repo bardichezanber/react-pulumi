@@ -11,7 +11,7 @@
 
 import { createElement, type FC } from "react";
 import { renderToResourceTree, collectHookKeys } from "./renderer.js";
-import { materializeTree, getPulumiSDK } from "./pulumi-bridge.js";
+import { getPulumiSDK } from "./pulumi-bridge.js";
 import { loadState, collectState, resetState, type PersistedState } from "./state-store.js";
 import { installInterceptor } from "./state-interceptor.js";
 import { resetConfigCache } from "./hooks/useConfig.js";
@@ -94,6 +94,8 @@ export function renderToPulumi(Component: FC): () => void {
     loadState(prevState);
 
     // 2. Install useState interceptor and render
+    //    Resources are created at render time (as side effects of FC components
+    //    returned by pulumiToComponent), so no separate materializeTree step needed.
     const cleanup = installInterceptor();
     let renderResult;
     try {
@@ -104,7 +106,7 @@ export function renderToPulumi(Component: FC): () => void {
       cleanup();
     }
 
-    const { tree, fiberRoot } = renderResult;
+    const { fiberRoot } = renderResult;
 
     // 3. Collect hook keys and validate against previous state
     const keys = collectHookKeys(fiberRoot);
@@ -116,10 +118,7 @@ export function renderToPulumi(Component: FC): () => void {
       );
     }
 
-    // 4. Materialize user resources
-    materializeTree(tree);
-
-    // 5. Create state hook resource (writes config on deploy success)
+    // 4. Create state hook resource (writes config on deploy success)
     const newState = collectState(keys);
     if (keys.length > 0) {
       createStateHookResource(pulumi, newState);

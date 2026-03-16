@@ -28,14 +28,14 @@ class MockAwsProvider {
 }
 
 // Register mock resources with realistic AWS type tokens
-const AwsProvider = pulumiToComponent(MockAwsProvider);
-const Vpc = pulumiToComponent(MockResource, "aws:ec2/vpc:Vpc");
-const Subnet = pulumiToComponent(MockResource, "aws:ec2/subnet:Subnet");
-const SecurityGroup = pulumiToComponent(MockResource, "aws:ec2/securityGroup:SecurityGroup");
-const Instance = pulumiToComponent(MockResource, "aws:ec2/instance:Instance");
-const RdsInstance = pulumiToComponent(MockResource, "aws:rds/instance:Instance");
-const CacheCluster = pulumiToComponent(MockResource, "aws:elasticache/cluster:Cluster");
-const Bucket = pulumiToComponent(MockResource, "aws:s3/bucketV2:BucketV2");
+const [AwsProvider] = pulumiToComponent(MockAwsProvider);
+const [Vpc] = pulumiToComponent(MockResource, "aws:ec2/vpc:Vpc");
+const [Subnet] = pulumiToComponent(MockResource, "aws:ec2/subnet:Subnet");
+const [SecurityGroup] = pulumiToComponent(MockResource, "aws:ec2/securityGroup:SecurityGroup");
+const [Instance] = pulumiToComponent(MockResource, "aws:ec2/instance:Instance");
+const [RdsInstance] = pulumiToComponent(MockResource, "aws:rds/instance:Instance");
+const [CacheCluster] = pulumiToComponent(MockResource, "aws:elasticache/cluster:Cluster");
+const [Bucket] = pulumiToComponent(MockResource, "aws:s3/bucketV2:BucketV2");
 
 // Reusable components
 function WebTier({ env }: { env: string }) {

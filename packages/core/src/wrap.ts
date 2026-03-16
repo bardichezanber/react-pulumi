@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createContext, createElement, type ReactNode, type Context } from "react";
 import { registerResource, type PulumiResourceConstructor } from "./registry.js";
 
 /**
@@ -34,8 +34,6 @@ type ExtractArgs<T> =
 
 /**
  * Pulumi resource options that can be set via the `opts` JSX prop.
- * These are stripped by the reconciler and stored on the ResourceNode,
- * then merged into Pulumi opts during materialization.
  */
 export interface ResourceOpts {
   protect?: boolean;
@@ -44,50 +42,49 @@ export interface ResourceOpts {
   deleteBeforeReplace?: boolean;
   retainOnDelete?: boolean;
   aliases?: string[];
-  /** Override provider by name (resolved during materialization) */
-  provider?: string;
-  /** Explicit dependencies by resource name (resolved during materialization) */
-  dependsOn?: string[];
+  provider?: unknown;
+  dependsOn?: unknown[];
   customTimeouts?: { create?: string; update?: string; delete?: string };
+  parent?: unknown;
+  [key: string]: unknown;
 }
 
 /**
  * Props exposed in JSX for a wrapped Pulumi resource.
  * - All resource args (from the constructor's second parameter)
  * - `name` overrides the Pulumi logical name (defaults to type token)
- * - `opts` for Pulumi resource options (protect, ignoreChanges, etc.)
- * - `children` for nesting (React standard)
+ * - `opts` for Pulumi resource options (protect, provider, dependsOn, etc.)
+ * - `children` for nesting — ReactNode or render-prop function
  */
-type ResourceProps<T> = Partial<ExtractArgs<T>> & {
+export type ResourceProps<T extends PulumiResourceConstructor> = Partial<ExtractArgs<T>> & {
   name?: string;
   opts?: ResourceOpts;
-  children?: ReactNode;
+  children?: ReactNode | ((instance: InstanceType<T>) => ReactNode);
 };
 
 /**
- * A branded function component type so TypeScript treats the returned string
- * as a valid JSX element type with proper prop types.
- */
-interface ResourceComponent<T> {
-  (props: ResourceProps<T>): null;
-  displayName?: string;
-}
-
-/**
- * Wraps a Pulumi resource class so it can be used as a React host component.
+ * Wraps a Pulumi resource class so it can be used as a React component.
  *
- * The type token is auto-extracted from the class's `__pulumiType` static
- * property (present on all Pulumi resource classes). You can override it
- * by passing an explicit `typeToken`.
+ * Returns `[Component, Context]`:
+ * - Component: React FC that creates the Pulumi resource at render time
+ *   and provides the instance via Context.
+ * - Context: React Context for descendants to read the instance via `useContext`.
+ *
+ * Supports two children modes:
+ * - Context mode: `<Vcn name="x"><SubnetLayer /></Vcn>` — descendants use `useContext(VcnCtx)`
+ * - Render props: `<Vcn name="x">{(vcn) => <Subnet vcnId={vcn.id} />}</Vcn>`
  *
  * Usage:
- *   const RandomPet = pulumiToComponent(random.RandomPet);
- *   // then in JSX: <RandomPet name="my-pet" length={3} />
+ * ```tsx
+ * const [Bucket, BucketCtx] = pulumiToComponent(aws.s3.Bucket);
+ * // <Bucket name="my-bucket" versioning={true} />
+ * // Descendants: const bucket = useContext(BucketCtx);
+ * ```
  */
 export function pulumiToComponent<T extends PulumiResourceConstructor>(
   ResourceClass: T,
   typeToken?: string,
-): ResourceComponent<T> {
+): [React.FC<ResourceProps<T>>, Context<InstanceType<T>>] {
   const token =
     typeToken ??
     (ResourceClass as unknown as { __pulumiType?: string }).__pulumiType;
@@ -99,6 +96,24 @@ export function pulumiToComponent<T extends PulumiResourceConstructor>(
     );
   }
 
+  // Keep registry populated for CLI backward compat + viz
   registerResource(token, ResourceClass);
-  return token as unknown as ResourceComponent<T>;
+
+  const ResourceContext = createContext<InstanceType<T>>(null as InstanceType<T>);
+
+  function ResourceComponent(props: ResourceProps<T>) {
+    const { name, children, opts, ...args } = props;
+    const resourceName = (name as string) ?? token;
+    const instance = new ResourceClass(resourceName, args, opts ?? {}) as InstanceType<T>;
+
+    const content = typeof children === "function"
+      ? (children as (instance: InstanceType<T>) => ReactNode)(instance)
+      : children;
+
+    return createElement(ResourceContext.Provider, { value: instance }, content);
+  }
+
+  ResourceComponent.displayName = token;
+
+  return [ResourceComponent as React.FC<ResourceProps<T>>, ResourceContext];
 }

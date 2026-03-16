@@ -5,16 +5,21 @@ React reconciler for Pulumi infrastructure-as-code. Write cloud infrastructure a
 ## Architecture
 
 ```
-JSX Component → renderToResourceTree() → ResourceNode tree → materializeTree() → Pulumi resources → cloud
+JSX Component → renderToResourceTree() → React fiber tree → Pulumi resources (created at render time) → cloud
 ```
 
-**Core flow**: React reconciler builds an in-memory `ResourceNode` tree from JSX. No DOM, no double-diffing — React builds the tree, Pulumi diffs against cloud state.
+**Core flow**: `pulumiToComponent` returns `[Component, Context]`. The Component is a React FC that creates the Pulumi resource at render time and provides the instance via Context. Descendants read the instance via `useContext`.
 
 **With `renderToPulumi`** (standard `pulumi up` compatible):
 ```
-Pulumi.<stack>.yaml → loadState → interceptor → render → materialize → dynamic resource → config set
+Pulumi.<stack>.yaml → loadState → interceptor → render (resources created as side effects) → dynamic resource → config set
 ```
 `useState` values persist to `Pulumi.<stack>.yaml` via a dynamic resource that writes on deploy success.
+
+**Legacy host-component path** (CLI backward compat):
+```
+registerResource() + string type tokens → reconciler createInstance → ResourceNode tree → materializeTree() → Pulumi resources
+```
 
 ## Monorepo layout
 
@@ -37,24 +42,28 @@ pnpm -r build          # builds all packages (turbo)
 pnpm --filter @react-pulumi/core test   # vitest
 ```
 
-Tests are excluded from `tsc` build (tsconfig `exclude: ["src/__tests__"]`) because host component type tokens (strings from `pulumiToComponent`) don't satisfy JSX `IntrinsicAttributes`. Vitest uses esbuild which doesn't enforce this.
+Tests are excluded from `tsc` build (tsconfig `exclude: ["src/__tests__"]`). Vitest uses esbuild which doesn't enforce strict JSX type checking.
 
 ## Key modules
 
+### `packages/core/src/wrap.ts`
+`pulumiToComponent(ResourceClass, typeToken?)` returns `[FC, Context]`:
+- FC: React function component that calls `new ResourceClass(name, args, opts)` at render time and wraps children in a Context Provider
+- Context: `React.Context<InstanceType<T>>` for descendants to read the instance
+- Supports two children modes: Context mode (`<Vcn><SubnetLayer /></Vcn>`) and render props (`<Vcn>{(vcn) => ...}</Vcn>`)
+- Still registers in the global registry for CLI backward compat + viz
+
 ### `packages/core/src/reconciler.ts`
-Custom React reconciler host config (mutation mode). React 19 requires `resolveUpdatePriority`, `getCurrentUpdatePriority`, `setCurrentUpdatePriority`, `supportsMicrotasks`, and many other config keys not documented in older react-reconciler guides.
+Custom React reconciler host config (mutation mode). React 19 requires `resolveUpdatePriority`, `getCurrentUpdatePriority`, `setCurrentUpdatePriority`, `supportsMicrotasks`, and many other config keys not documented in older react-reconciler guides. Still supports host component mode (string type tokens) for backward compat.
 
 ### `packages/core/src/renderer.ts`
-Uses `updateContainerSync()` + `flushSyncWork()` (not the older `flushSync`) for synchronous rendering. React 19 reconciler only supports `ConcurrentRoot` (tag=1).
-
-### `packages/core/src/wrap.ts`
-`pulumiToComponent(ResourceClass, typeToken)` registers the class in a global registry and returns the type token string. The reconciler's `createInstance` uses this token to build `ResourceNode`s.
+Uses `updateContainerSync()` + `flushSyncWork()` (not the older `flushSync`) for synchronous rendering. React 19 reconciler only supports `ConcurrentRoot` (tag=1). With the new FC-based `pulumiToComponent`, resources are created during this render phase.
 
 ### `packages/core/src/pulumi-bridge.ts`
-`materializeTree(root)` walks the ResourceNode tree and calls `new ResourceClass(name, props, { parent })` for each node. Root node (type `__react_pulumi_root__`) is skipped.
+`materializeTree(root)` walks the ResourceNode tree and calls `new ResourceClass(name, props, { parent })` for each node. This is the **legacy path** used by the CLI's host-component mode. Not needed when using the new `[Component, Context]` API (resources are created at render time).
 
 ### `packages/core/src/render-to-pulumi.ts`
-`renderToPulumi(Component)` returns a `() => void` function for use as a standard Pulumi program (default export). Orchestrates: read config → load state → install interceptor → render → collect hook keys → materialize → create state dynamic resource → reset. Compatible with `pulumi up` without the react-pulumi CLI.
+`renderToPulumi(Component)` returns a `() => void` function for use as a standard Pulumi program (default export). Orchestrates: read config → load state → install interceptor → render (resources created as side effects) → collect hook keys → create state dynamic resource → reset. No longer calls `materializeTree`.
 
 ### `packages/core/src/state-store.ts`
 Module-level store for persisted `useState` values. `loadState()` hydrates from `Pulumi.<stack>.yaml`, `getNextValue()` returns hydrated or default values, `trackValue()` tracks setter calls, `collectState()` snapshots for persistence.
@@ -69,34 +78,54 @@ Proxy-based interceptor on React 19's `__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USE
 `useStackOutput(stackName, outputKey)` reads an output from another Pulumi stack. Returns `pulumi.Output<T>` for passing directly into resource props. StackReference instances cached per stack name, reset between renders.
 
 ### `packages/cli/src/commands/up.ts`
-Loads user TSX via dynamic import, renders to tree, materializes inside a Pulumi `LocalWorkspace.createOrSelectStack({ projectName, stackName, program })` using `InlineProgramArgs`.
+Loads user TSX via dynamic import, renders via `renderToResourceTree` (which triggers resource creation) inside a Pulumi `LocalWorkspace.createOrSelectStack({ projectName, stackName, program })`.
 
 ## React prop caveats
 
-- `key` and `ref` are reserved React props — they get stripped by React before reaching `createInstance`. Pulumi resources that have a `key` input (e.g., S3 BucketObject) need a different prop name (e.g., `objectKey`) and mapping in the bridge layer.
+- `key` and `ref` are reserved React props — they get stripped by React before reaching the component. Pulumi resources that have a `key` input (e.g., S3 BucketObject) need a different prop name (e.g., `objectKey`).
 - `name` prop is used as the Pulumi resource's logical name. If omitted, the type token is used.
-- `children` prop is stripped — child components become tree children via `appendChild`.
+- `children` supports two modes: ReactNode (Context mode) or `(instance) => ReactNode` (render props mode).
 
-## Using `renderToPulumi` (standard Pulumi)
+## Using `pulumiToComponent`
 
 ```tsx
 import * as pulumi from "@pulumi/pulumi";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { pulumiToComponent, renderToPulumi, setPulumiSDK } from "@react-pulumi/core";
-import * as aws from "@pulumi/aws";
+import * as oci from "@pulumi/oci";
 
 setPulumiSDK(pulumi);
-const Instance = pulumiToComponent(aws.ec2.Instance);
+const [Vcn, VcnCtx] = pulumiToComponent(oci.core.Vcn);
+const [Subnet] = pulumiToComponent(oci.core.Subnet);
+const [Instance] = pulumiToComponent(oci.core.Instance);
+
+function SubnetLayer() {
+  const vcn = useContext(VcnCtx);
+  return <Subnet name="pub" vcnId={vcn.id} cidrBlock="10.0.0.0/20" />;
+}
 
 function App() {
-  const [replicas] = useState(2); // persisted to Pulumi.<stack>.yaml
-  return Array.from({ length: replicas }, (_, i) => (
-    <Instance key={i} name={`web-${i}`} instanceType="t3.micro" ami="ami-123" />
-  ));
+  const [replicas] = useState(2);
+  return (
+    <Vcn name="main" cidrBlock="10.0.0.0/16">
+      <SubnetLayer />
+    </Vcn>
+  );
 }
 
 export default renderToPulumi(App);
 // Then: pulumi up
+```
+
+**Render props mode** (inline wiring without separate components):
+```tsx
+<Vcn name="main" cidrBlock="10.0.0.0/16">
+  {(vcn) => (
+    <Subnet name="pub" vcnId={vcn.id} cidrBlock="10.0.0.0/20">
+      {(subnet) => <Instance name="web-0" subnetId={subnet.id} />}
+    </Subnet>
+  )}
+</Vcn>
 ```
 
 **State persistence format** in `Pulumi.<stack>.yaml`:
@@ -116,8 +145,10 @@ config:
 import { pulumiToComponent } from "@react-pulumi/core";
 import * as aws from "@pulumi/aws";
 
-const Bucket = pulumiToComponent(aws.s3.Bucket, "aws:s3:Bucket");
-// Use in JSX: <Bucket name="my-bucket" versioning={true} />
+const [Bucket, BucketCtx] = pulumiToComponent(aws.s3.Bucket);
+// Context mode: <Bucket name="my-bucket"><ChildThatReadsCtx /></Bucket>
+// Render props: <Bucket name="my-bucket">{(b) => <Other bucketId={b.id} />}</Bucket>
+// Leaf (no Context needed): const [Lambda] = pulumiToComponent(aws.lambda.Function);
 ```
 
 ## Viz store

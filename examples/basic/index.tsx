@@ -5,9 +5,9 @@ import * as random from "@pulumi/random";
 
 setPulumiSDK(pulumi);
 
-// Wrap Pulumi resources as React components — type token auto-extracted
-const RandomPet = pulumiToComponent(random.RandomPet);
-const RandomString = pulumiToComponent(random.RandomString);
+// Wrap Pulumi resources as React components — returns [Component, Context]
+const [RandomPet] = pulumiToComponent(random.RandomPet);
+const [RandomString] = pulumiToComponent(random.RandomString);
 
 // useState values persist to Pulumi.<stack>.yaml across `pulumi up` runs
 function App() {

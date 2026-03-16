@@ -2,11 +2,11 @@ import React from "react";
 import { pulumiToComponent } from "@react-pulumi/core";
 import * as aws from "@pulumi/aws";
 
-const AwsProvider = pulumiToComponent(aws.Provider);
-const Bucket = pulumiToComponent(aws.s3.BucketV2);
-const BucketWebsite = pulumiToComponent(aws.s3.BucketWebsiteConfigurationV2);
-const BucketPublicAccess = pulumiToComponent(aws.s3.BucketPublicAccessBlock);
-const BucketObject = pulumiToComponent(aws.s3.BucketObjectv2);
+const [AwsProvider] = pulumiToComponent(aws.Provider);
+const [Bucket] = pulumiToComponent(aws.s3.BucketV2);
+const [BucketWebsite] = pulumiToComponent(aws.s3.BucketWebsiteConfigurationV2);
+const [BucketPublicAccess] = pulumiToComponent(aws.s3.BucketPublicAccessBlock);
+const [BucketObject] = pulumiToComponent(aws.s3.BucketObjectv2);
 
 // Reusable component: a static website bucket
 function StaticSite({ siteName }: { siteName: string }) {

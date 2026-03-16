@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createElement } from "react";
 import { renderToResourceTree } from "../renderer.js";
-import { pulumiToComponent } from "../wrap.js";
+import { registerResource } from "../registry.js";
 import { ROOT_TYPE, GROUP_TYPE } from "../resource-tree.js";
 import { materializeTree } from "../pulumi-bridge.js";
 import type { ResourceNode } from "../resource-tree.js";
@@ -64,11 +64,20 @@ class MockGcpBucket {
   }
 }
 
-const Bucket = pulumiToComponent(MockBucket as never, "aws:s3:Bucket");
-const BucketObject = pulumiToComponent(MockBucketObject as never, "aws:s3:BucketObject");
-const AwsProvider = pulumiToComponent(MockAwsProvider as never);
-const GcpProvider = pulumiToComponent(MockGcpProvider as never);
-const GcpBucket = pulumiToComponent(MockGcpBucket as never, "gcp:storage:Bucket");
+// Register resources in the registry and use string type tokens as host components
+// (the old reconciler host-component path)
+registerResource("aws:s3:Bucket", MockBucket as never);
+registerResource("aws:s3:BucketObject", MockBucketObject as never);
+registerResource("pulumi:providers:aws", MockAwsProvider as never);
+registerResource("pulumi:providers:gcp", MockGcpProvider as never);
+registerResource("gcp:storage:Bucket", MockGcpBucket as never);
+
+// Host component type tokens — used as JSX element types for the old reconciler path
+const Bucket = "aws:s3:Bucket" as unknown as React.FC<Record<string, unknown>>;
+const BucketObject = "aws:s3:BucketObject" as unknown as React.FC<Record<string, unknown>>;
+const AwsProvider = "pulumi:providers:aws" as unknown as React.FC<Record<string, unknown>>;
+const GcpProvider = "pulumi:providers:gcp" as unknown as React.FC<Record<string, unknown>>;
+const GcpBucket = "gcp:storage:Bucket" as unknown as React.FC<Record<string, unknown>>;
 
 /** Recursively collect all resource nodes (kind !== "component") */
 function collectResources(node: ResourceNode): ResourceNode[] {
@@ -82,16 +91,6 @@ function collectResources(node: ResourceNode): ResourceNode[] {
   return result;
 }
 
-/** Find the first resource node in the tree (skipping components and root) */
-function firstResource(node: ResourceNode): ResourceNode | undefined {
-  if (node.kind === "resource" && node.type !== ROOT_TYPE) return node;
-  for (const child of node.children) {
-    const found = firstResource(child);
-    if (found) return found;
-  }
-  return undefined;
-}
-
 /** Find a resource node by name */
 function findByName(node: ResourceNode, name: string): ResourceNode | undefined {
   if (node.name === name && node.type !== ROOT_TYPE) return node;
@@ -102,7 +101,7 @@ function findByName(node: ResourceNode, name: string): ResourceNode | undefined 
   return undefined;
 }
 
-describe("renderToResourceTree", () => {
+describe("renderToResourceTree (host component path)", () => {
   it("renders a single resource", () => {
     const tree = renderToResourceTree(
       createElement(Bucket, { name: "my-bucket", versioning: true }),
@@ -207,7 +206,7 @@ describe("renderToResourceTree", () => {
   });
 });
 
-describe("provider detection", () => {
+describe("provider detection (host component path)", () => {
   it("detects provider nodes via type token", () => {
     function App() {
       return createElement(
@@ -299,7 +298,7 @@ describe("provider detection", () => {
   });
 });
 
-describe("opts prop", () => {
+describe("opts prop (host component path)", () => {
   it("strips opts from props and stores on node", () => {
     function App() {
       return createElement(Bucket, {
@@ -325,7 +324,7 @@ describe("opts prop", () => {
   });
 });
 
-describe("materializeTree", () => {
+describe("materializeTree (host component path)", () => {
   it("instantiates Pulumi resources from tree", () => {
     const tree = renderToResourceTree(
       createElement(

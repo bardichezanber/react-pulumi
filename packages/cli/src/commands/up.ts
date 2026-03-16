@@ -22,7 +22,7 @@ export async function up(entry: string, opts: UpOptions): Promise<void> {
 
   const { LocalWorkspace } = await import("@pulumi/pulumi/automation/index.js");
   const pulumi = await import("@pulumi/pulumi");
-  const { renderToResourceTree, materializeTree, setPulumiSDK } = await import("@react-pulumi/core");
+  const { renderToResourceTree, setPulumiSDK } = await import("@react-pulumi/core");
   setPulumiSDK(pulumi);
 
   const stack = await LocalWorkspace.createOrSelectStack({
@@ -30,8 +30,9 @@ export async function up(entry: string, opts: UpOptions): Promise<void> {
     stackName: opts.stack,
     program: async () => {
       const element = createElement(App);
-      const tree = renderToResourceTree(element);
-      materializeTree(tree);
+      // Resources are created at render time (as side effects of FC components
+      // returned by pulumiToComponent), no separate materializeTree step needed.
+      renderToResourceTree(element);
     },
   });
 

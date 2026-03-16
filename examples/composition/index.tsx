@@ -2,9 +2,9 @@ import React from "react";
 import { pulumiToComponent } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
 
-const RandomPet = pulumiToComponent(random.RandomPet);
-const RandomString = pulumiToComponent(random.RandomString);
-const RandomId = pulumiToComponent(random.RandomId);
+const [RandomPet] = pulumiToComponent(random.RandomPet);
+const [RandomString] = pulumiToComponent(random.RandomString);
+const [RandomId] = pulumiToComponent(random.RandomId);
 
 // Reusable component: a "service" with a unique ID and API key
 function Service({ serviceName, keyLength = 32 }: { serviceName: string; keyLength?: number }) {

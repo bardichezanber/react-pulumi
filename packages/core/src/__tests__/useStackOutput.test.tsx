@@ -18,7 +18,7 @@ class MockSecurityGroup {
   }
 }
 
-const SecurityGroup = pulumiToComponent(MockSecurityGroup as never, "aws:ec2:SecurityGroup");
+const [SecurityGroup] = pulumiToComponent(MockSecurityGroup as never, "aws:ec2:SecurityGroup");
 
 // Mock Pulumi Output — a simple wrapper that holds a value
 class MockOutput {
@@ -188,7 +188,7 @@ describe("useStackOutput", () => {
         createdResources.push(this);
       }
     }
-    const TrackedSG = pulumiToComponent(TrackingSecurityGroup as never, "aws:ec2:TrackedSG");
+    const [TrackedSG] = pulumiToComponent(TrackingSecurityGroup as never, "aws:ec2:TrackedSG");
 
     function App() {
       const vpcId = useStackOutput("org/network/prod", "vpcId");

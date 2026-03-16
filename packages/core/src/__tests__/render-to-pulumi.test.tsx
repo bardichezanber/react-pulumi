@@ -18,7 +18,7 @@ class MockBucket {
   }
 }
 
-const Bucket = pulumiToComponent(MockBucket as never, "aws:s3:Bucket");
+const [Bucket] = pulumiToComponent(MockBucket as never, "aws:s3:Bucket");
 
 // ── Mock Pulumi SDK ──
 
@@ -75,7 +75,7 @@ describe("renderToPulumi", () => {
     expect(typeof program).toBe("function");
   });
 
-  it("renders and materializes resources when called", () => {
+  it("renders and creates resources when called", () => {
     const sdk = createMockPulumiSDK();
     setPulumiSDK(sdk);
 

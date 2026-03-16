@@ -2,9 +2,9 @@ import React from "react";
 import { pulumiToComponent, Group } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
 
-const RandomPet = pulumiToComponent(random.RandomPet);
-const RandomString = pulumiToComponent(random.RandomString);
-const RandomId = pulumiToComponent(random.RandomId);
+const [RandomPet] = pulumiToComponent(random.RandomPet);
+const [RandomString] = pulumiToComponent(random.RandomString);
+const [RandomId] = pulumiToComponent(random.RandomId);
 
 // ──────────────────────────────────────────────────────────────
 // TRANSPARENT component — no Pulumi footprint, just code organization.

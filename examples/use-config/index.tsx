@@ -5,8 +5,8 @@ import * as random from "@pulumi/random";
 
 setPulumiSDK(pulumi);
 
-const RandomPet = pulumiToComponent(random.RandomPet);
-const RandomString = pulumiToComponent(random.RandomString);
+const [RandomPet] = pulumiToComponent(random.RandomPet);
+const [RandomString] = pulumiToComponent(random.RandomString);
 
 function App() {
   // Read config values — set via `pulumi config set <key> <value>`

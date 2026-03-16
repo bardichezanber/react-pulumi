@@ -6,7 +6,7 @@ export type { PersistedState } from "./state-store.js";
 export { useConfig } from "./hooks/useConfig.js";
 export { useStackOutput } from "./hooks/useStackOutput.js";
 export { pulumiToComponent, extractProviderPackage, extractResourcePackage } from "./wrap.js";
-export type { ResourceOpts } from "./wrap.js";
+export type { ResourceOpts, ResourceProps } from "./wrap.js";
 export { registerResource, getResourceClass, getRegistry } from "./registry.js";
 export { Action } from "./components/Action.js";
 export { Group } from "./components/Group.js";

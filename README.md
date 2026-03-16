@@ -12,7 +12,7 @@ import * as aws from "@pulumi/aws";
 
 setPulumiSDK(pulumi);
 
-const Instance = pulumiToComponent(aws.ec2.Instance);
+const [Instance] = pulumiToComponent(aws.ec2.Instance);
 
 function App() {
   const [replicas] = useState(2);
@@ -30,10 +30,11 @@ pulumi up   # standard Pulumi CLI — useState persists to Pulumi.<stack>.yaml
 
 ## How it works
 
-1. **React reconciler** renders your JSX into an in-memory resource tree (no DOM)
-2. **Pulumi bridge** walks the tree and instantiates real Pulumi resources with parent relationships
-3. **Pulumi engine** diffs against cloud state and applies changes
-4. **State persistence** — `useState` values are saved to `Pulumi.<stack>.yaml` config via a dynamic resource, so they survive across `pulumi up` runs
+1. **`pulumiToComponent`** wraps Pulumi resource classes as React FCs that return `[Component, Context]`
+2. **React reconciler** renders your JSX — resources are created at render time as side effects
+3. **Context** provides resource instances to descendants — `useContext(VcnCtx)` reads the nearest ancestor
+4. **Pulumi engine** diffs against cloud state and applies changes
+5. **State persistence** — `useState` values are saved to `Pulumi.<stack>.yaml` config via a dynamic resource
 
 React handles composition, conditional logic, loops, and component reuse. Pulumi handles the actual cloud diffing and deployment.
 
@@ -113,8 +114,8 @@ import * as random from "@pulumi/random";
 
 setPulumiSDK(pulumi);
 
-const RandomPet = pulumiToComponent(random.RandomPet);
-const RandomString = pulumiToComponent(random.RandomString);
+const [RandomPet] = pulumiToComponent(random.RandomPet);
+const [RandomString] = pulumiToComponent(random.RandomString);
 
 function App() {
   const [petLength] = useState(3);
@@ -160,25 +161,36 @@ pulumi up   # petLength=5, pwLength=32
 
 ## Wrapping Pulumi resources
 
-`pulumiToComponent` turns any Pulumi resource class into a React host component:
+`pulumiToComponent` wraps a Pulumi resource class as a React FC and returns `[Component, Context]`:
 
 ```tsx
 import * as aws from "@pulumi/aws";
+import { useContext } from "react";
 import { pulumiToComponent } from "@react-pulumi/core";
 
-// Type token auto-extracted from __pulumiType static property
-const Bucket = pulumiToComponent(aws.s3.Bucket);
-const BucketObject = pulumiToComponent(aws.s3.BucketObject);
+// Returns [Component, Context] — type token auto-extracted
+const [Bucket, BucketCtx] = pulumiToComponent(aws.s3.Bucket);
+const [BucketObject] = pulumiToComponent(aws.s3.BucketObject);
 
-// Or specify explicitly
-const Instance = pulumiToComponent(aws.ec2.Instance, "aws:ec2:Instance");
+// Leaf resources — ignore Context
+const [Instance] = pulumiToComponent(aws.ec2.Instance);
 ```
 
-Nesting components creates Pulumi parent-child relationships:
+Resources are created at render time. Descendants read ancestor instances via Context:
 
 ```tsx
+function BucketContents() {
+  const bucket = useContext(BucketCtx);
+  return <BucketObject name="index" bucket={bucket.id} objectKey="index.html" />;
+}
+
 <Bucket name="assets">
-  <BucketObject name="index" objectKey="index.html" source="./index.html" />
+  <BucketContents />
+</Bucket>
+
+// Or use render props:
+<Bucket name="assets">
+  {(bucket) => <BucketObject name="index" bucket={bucket.id} objectKey="index.html" />}
 </Bucket>
 ```
 
@@ -249,7 +261,7 @@ Instead of `renderToPulumi` + `pulumi up`, you can use the react-pulumi CLI with
 import { pulumiToComponent } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
 
-const RandomPet = pulumiToComponent(random.RandomPet);
+const [RandomPet] = pulumiToComponent(random.RandomPet);
 
 export default function App() {
   return <RandomPet name="my-pet" length={3} />;
@@ -276,9 +288,10 @@ The viz dashboard shows a real-time resource graph powered by React Flow, with d
 ## Roadmap
 
 - [x] React reconciler + resource tree
-- [x] Pulumi bridge (`materializeTree`)
-- [x] `pulumiToComponent` wrapper with auto type token extraction
-- [x] Parent-child resource relationships via JSX nesting
+- [x] Pulumi bridge (`materializeTree` — legacy host-component path)
+- [x] `pulumiToComponent` returns `[Component, Context]` — render-time resource creation + Context
+- [x] Cross-resource Output wiring via `useContext`
+- [x] Render props mode: `<Vcn>{(vcn) => <Subnet vcnId={vcn.id} />}</Vcn>`
 - [x] Provider scoping (`<AwsProvider>` context propagation)
 - [x] `<Group>` for Pulumi ComponentResource
 - [x] `renderToPulumi` — standard `pulumi up` compatibility

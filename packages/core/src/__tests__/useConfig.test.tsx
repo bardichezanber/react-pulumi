@@ -18,7 +18,7 @@ class MockBucket {
   }
 }
 
-const Bucket = pulumiToComponent(MockBucket as never, "aws:s3:Bucket");
+const [Bucket] = pulumiToComponent(MockBucket as never, "aws:s3:Bucket");
 
 function createMockPulumiSDK(configStore: Record<string, string> = {}) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
