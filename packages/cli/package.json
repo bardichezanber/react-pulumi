@@ -12,7 +12,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bz/react-pulumi.git",
+    "url": "https://github.com/bardichezanber/react-pulumi.git",
     "directory": "packages/cli"
   },
   "publishConfig": {
