@@ -1,0 +1,40 @@
+{
+  "name": "@react-pulumi/cli",
+  "version": "0.1.0",
+  "description": "CLI for deploying React-defined Pulumi infrastructure",
+  "type": "module",
+  "bin": {
+    "react-pulumi": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bz/react-pulumi.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@react-pulumi/core": "workspace:*",
+    "@react-pulumi/viz": "workspace:*",
+    "@pulumi/pulumi": "^3.0.0",
+    "commander": "^13.0.0",
+    "react": "^19.0.0",
+    "tsx": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/node": "^22.0.0",
+    "vitest": "^3.0.0",
+    "typescript": "^5.7.0"
+  }
+}

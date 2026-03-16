@@ -1,0 +1,20 @@
+{
+  "name": "@react-pulumi/example-component-resource",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "up": "react-pulumi up ./index.tsx",
+    "preview": "react-pulumi preview ./index.tsx",
+    "destroy": "react-pulumi destroy ./index.tsx",
+    "viz": "react-pulumi viz ./index.tsx"
+  },
+  "dependencies": {
+    "@react-pulumi/core": "workspace:*",
+    "@react-pulumi/cli": "workspace:*",
+    "@pulumi/random": "^4.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
+}

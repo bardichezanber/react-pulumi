@@ -1,0 +1,8 @@
+name: react-pulumi-basic
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+    nodeargs: "--import tsx"
+main: index.tsx
+description: react-pulumi example using standard `pulumi up` with renderToPulumi

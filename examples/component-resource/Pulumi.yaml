@@ -1,0 +1,3 @@
+name: react-pulumi-component-resource
+runtime: nodejs
+description: Demonstrates <Group> for Pulumi ComponentResource grouping vs transparent React components

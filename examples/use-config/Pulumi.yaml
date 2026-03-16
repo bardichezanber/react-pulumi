@@ -1,0 +1,8 @@
+name: react-pulumi-use-config
+runtime:
+  name: nodejs
+  options:
+    typescript: false
+    nodeargs: "--import tsx"
+main: index.tsx
+description: react-pulumi example demonstrating useConfig hook

@@ -1,0 +1,17 @@
+{
+  "name": "@react-pulumi/example-viz-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "viz": "react-pulumi viz ./index.tsx"
+  },
+  "dependencies": {
+    "@react-pulumi/core": "workspace:*",
+    "@react-pulumi/cli": "workspace:*",
+    "@react-pulumi/viz": "workspace:*",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0"
+  }
+}

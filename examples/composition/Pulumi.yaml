@@ -1,0 +1,3 @@
+name: react-pulumi-composition
+runtime: nodejs
+description: React component composition patterns for infrastructure
