@@ -1,6 +1,6 @@
 {
   "name": "@react-pulumi/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI for deploying React-defined Pulumi infrastructure",
   "type": "module",
   "bin": {
