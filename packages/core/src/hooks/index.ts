@@ -1,2 +1,2 @@
-export { useConfig, resetConfigCache } from "./useConfig.js";
-export { useStackOutput, resetStackRefCache } from "./useStackOutput.js";
+export { resetConfigCache, useConfig } from "./useConfig.js";
+export { resetStackRefCache, useStackOutput } from "./useStackOutput.js";

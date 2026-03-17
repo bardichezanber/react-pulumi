@@ -1,5 +1,5 @@
-import { createContext, createElement, type ReactNode, type Context } from "react";
-import { registerResource, type PulumiResourceConstructor } from "./registry.js";
+import { type Context, createContext, createElement, type ReactNode } from "react";
+import { type PulumiResourceConstructor, registerResource } from "./registry.js";
 
 /**
  * Extract the package name from a provider type token.
@@ -19,7 +19,12 @@ export function extractResourcePackage(typeToken: string): string | null {
   if (idx <= 0) return null;
   const pkg = typeToken.substring(0, idx);
   // Skip internal tokens
-  if (pkg === "__react_pulumi_root__" || pkg === "__component__" || pkg === "__react_pulumi_group__") return null;
+  if (
+    pkg === "__react_pulumi_root__" ||
+    pkg === "__component__" ||
+    pkg === "__react_pulumi_group__"
+  )
+    return null;
   return pkg;
 }
 
@@ -27,10 +32,13 @@ export function extractResourcePackage(typeToken: string): string | null {
  * Extract the args type from a Pulumi resource constructor.
  * e.g. `new (name: string, args: RandomPetArgs, opts?: ...) => ...` → `RandomPetArgs`
  */
-type ExtractArgs<T> =
-  T extends new (name: string, args: infer A, ...rest: unknown[]) => unknown
-    ? A
-    : Record<string, unknown>;
+type ExtractArgs<T> = T extends new (
+  name: string,
+  args: infer A,
+  ...rest: unknown[]
+) => unknown
+  ? A
+  : Record<string, unknown>;
 
 /**
  * Pulumi resource options that can be set via the `opts` JSX prop.
@@ -85,9 +93,7 @@ export function pulumiToComponent<T extends PulumiResourceConstructor>(
   ResourceClass: T,
   typeToken?: string,
 ): [React.FC<ResourceProps<T>>, Context<InstanceType<T>>] {
-  const token =
-    typeToken ??
-    (ResourceClass as unknown as { __pulumiType?: string }).__pulumiType;
+  const token = typeToken ?? (ResourceClass as unknown as { __pulumiType?: string }).__pulumiType;
 
   if (!token) {
     throw new Error(
@@ -106,9 +112,10 @@ export function pulumiToComponent<T extends PulumiResourceConstructor>(
     const resourceName = (name as string) ?? token;
     const instance = new ResourceClass(resourceName, args, opts ?? {}) as InstanceType<T>;
 
-    const content = typeof children === "function"
-      ? (children as (instance: InstanceType<T>) => ReactNode)(instance)
-      : children;
+    const content =
+      typeof children === "function"
+        ? (children as (instance: InstanceType<T>) => ReactNode)(instance)
+        : children;
 
     return createElement(ResourceContext.Provider, { value: instance }, content);
   }

@@ -1,11 +1,6 @@
 import Reconciler from "react-reconciler";
 import { DefaultEventPriority } from "react-reconciler/constants.js";
-import {
-  ResourceNode,
-  createResourceNode,
-  ROOT_TYPE,
-  GROUP_TYPE,
-} from "./resource-tree.js";
+import { createResourceNode, GROUP_TYPE, type ResourceNode } from "./resource-tree.js";
 import { extractProviderPackage } from "./wrap.js";
 
 // ---------- types the host config expects ----------
@@ -59,8 +54,7 @@ const hostConfig = {
 
   createTextInstance(): TextInstance {
     throw new Error(
-      "react-pulumi does not support text nodes. " +
-        "Only infrastructure components are allowed.",
+      "react-pulumi does not support text nodes. " + "Only infrastructure components are allowed.",
     );
   },
 
@@ -91,22 +85,14 @@ const hostConfig = {
     child.parent = null;
   },
 
-  insertBefore(
-    parent: Instance,
-    child: Instance,
-    before: Instance,
-  ): void {
+  insertBefore(parent: Instance, child: Instance, before: Instance): void {
     child.parent = parent;
     const idx = parent.children.indexOf(before);
     if (idx !== -1) parent.children.splice(idx, 0, child);
     else parent.children.push(child);
   },
 
-  insertInContainerBefore(
-    container: Container,
-    child: Instance,
-    before: Instance,
-  ): void {
+  insertInContainerBefore(container: Container, child: Instance, before: Instance): void {
     child.parent = container;
     const idx = container.children.indexOf(before);
     if (idx !== -1) container.children.splice(idx, 0, child);
@@ -129,10 +115,7 @@ const hostConfig = {
     return null;
   },
 
-  commitUpdate(
-    instance: Instance,
-    updatePayload: UpdatePayload,
-  ): void {
+  commitUpdate(instance: Instance, updatePayload: UpdatePayload): void {
     instance.props = updatePayload;
   },
 
@@ -213,19 +196,33 @@ const hostConfig = {
   supportsTestSelectors: false,
 
   // Required stubs for React 19
-  resolveEventType(): null { return null; },
-  resolveEventTimeStamp(): number { return Date.now(); },
-  shouldAttemptEagerTransition(): boolean { return false; },
+  resolveEventType(): null {
+    return null;
+  },
+  resolveEventTimeStamp(): number {
+    return Date.now();
+  },
+  shouldAttemptEagerTransition(): boolean {
+    return false;
+  },
   requestPostPaintCallback(): void {},
-  maySuspendCommit(): boolean { return false; },
-  preloadInstance(): boolean { return true; },
+  maySuspendCommit(): boolean {
+    return false;
+  },
+  preloadInstance(): boolean {
+    return true;
+  },
   startSuspendingCommit(): void {},
   suspendInstance(): void {},
-  waitForCommitToBeReady(): null { return null; },
+  waitForCommitToBeReady(): null {
+    return null;
+  },
   NotPendingTransition: null as unknown,
 
   resetFormInstance(): void {},
-  bindToConsole(): null { return null; },
+  bindToConsole(): null {
+    return null;
+  },
 
   warnsIfNotActing: false,
   rendererPackageName: "react-pulumi",

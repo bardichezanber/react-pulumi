@@ -26,7 +26,8 @@
   "scripts": {
     "build": "tsc && vite build",
     "dev": "vite",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build"
   },
   "peerDependencies": {

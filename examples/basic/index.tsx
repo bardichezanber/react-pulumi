@@ -1,7 +1,7 @@
-import React, { useState } from "react";
 import * as pulumi from "@pulumi/pulumi";
-import { pulumiToComponent, renderToPulumi, setPulumiSDK } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
+import { pulumiToComponent, renderToPulumi, setPulumiSDK } from "@react-pulumi/core";
+import { useState } from "react";
 
 setPulumiSDK(pulumi);
 

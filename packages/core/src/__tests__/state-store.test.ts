@@ -1,11 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import {
-  loadState,
-  getNextValue,
-  trackValue,
-  collectState,
-  resetState,
-} from "../state-store.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { collectState, getNextValue, loadState, resetState, trackValue } from "../state-store.js";
 
 beforeEach(() => {
   resetState();
@@ -107,7 +101,7 @@ describe("state-store", () => {
       loadState({ keys: [], values: [] });
 
       const r0 = getNextValue(1);
-      const r1 = getNextValue(2);
+      const _r1 = getNextValue(2);
       const r2 = getNextValue(3);
 
       trackValue(r0.index, 10);

@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { createElement } from "react";
-import { renderToPulumi } from "../render-to-pulumi.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { resetConfigCache, useConfig } from "../hooks/useConfig.js";
 import { setPulumiSDK } from "../pulumi-bridge.js";
+import { renderToPulumi } from "../render-to-pulumi.js";
 import { pulumiToComponent } from "../wrap.js";
-import { resetConfigCache } from "../hooks/useConfig.js";
-import { useConfig } from "../hooks/useConfig.js";
 
 // Mock resource
 class MockBucket {
@@ -132,7 +131,10 @@ describe("useConfig", () => {
 
   it("caches Config instances across multiple calls with same namespace", () => {
     let configConstructCount = 0;
-    const configStore: Record<string, string> = { "aws:region": "us-east-1", "aws:profile": "prod" };
+    const configStore: Record<string, string> = {
+      "aws:region": "us-east-1",
+      "aws:profile": "prod",
+    };
 
     const sdk = {
       Config: class MockConfig {
@@ -146,7 +148,7 @@ describe("useConfig", () => {
         }
       },
       dynamic: {
-        Resource: class { constructor() {} },
+        Resource: class {},
       },
     };
     setPulumiSDK(sdk);

@@ -1,6 +1,6 @@
-import { createServer as createHttpServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { createServer as createHttpServer } from "node:http";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ResourceNode } from "@react-pulumi/core";
 import type { DeploymentStatus } from "./store.js";
@@ -26,9 +26,7 @@ export interface VizServer {
   updateStatus: (status: DeploymentStatus) => void;
 }
 
-export async function startVizServer(
-  opts: VizServerOptions,
-): Promise<VizServer> {
+export async function startVizServer(opts: VizServerOptions): Promise<VizServer> {
   let currentTree = opts.tree;
   let currentStatus: DeploymentStatus = opts.status ?? "idle";
 
@@ -37,7 +35,11 @@ export async function startVizServer(
   const clientDir = join(__dirname, "client");
 
   let mode: "static" | "vite" = "static";
-  let viteServer: { middlewares: { handle: Function }; close: () => Promise<void> } | null = null;
+  let viteServer: {
+    // biome-ignore lint/complexity/noBannedTypes: Vite middleware type
+    middlewares: { handle: Function };
+    close: () => Promise<void>;
+  } | null = null;
 
   try {
     await readFile(join(clientDir, "index.html"), "utf-8");

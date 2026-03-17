@@ -5,9 +5,9 @@ import { register } from "tsx/esm/api";
 register();
 
 import { Command } from "commander";
-import { up } from "./commands/up.js";
-import { preview } from "./commands/preview.js";
 import { destroy } from "./commands/destroy.js";
+import { preview } from "./commands/preview.js";
+import { up } from "./commands/up.js";
 import { viz } from "./commands/viz.js";
 
 const program = new Command();

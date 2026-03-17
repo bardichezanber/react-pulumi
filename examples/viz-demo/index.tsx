@@ -1,5 +1,5 @@
-import React from "react";
 import { pulumiToComponent } from "@react-pulumi/core";
+import type React from "react";
 
 // Mock resource class — stands in for real Pulumi resources so we can
 // visualize the tree without installing any cloud provider SDK.

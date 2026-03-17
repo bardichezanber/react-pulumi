@@ -1,13 +1,13 @@
-import { type ReactElement } from "react";
+import type { ReactElement } from "react";
+import { Action } from "./components/Action.js";
 import { reconciler } from "./reconciler.js";
 import {
-  createResourceNode,
   createComponentNode,
-  ROOT_TYPE,
+  createResourceNode,
   propagateProviders,
   type ResourceNode,
+  ROOT_TYPE,
 } from "./resource-tree.js";
-import { Action } from "./components/Action.js";
 
 type ReconcilerExt = typeof reconciler & {
   updateContainerSync(
@@ -55,7 +55,8 @@ function buildTreeFromFiber(fiberRoot: FiberRoot): ResourceNode {
     ) {
       // Detect <Action> components — render as action nodes, not component groups
       if (fiber.type === Action) {
-        const props = (fiber as unknown as { memoizedProps?: Record<string, unknown> }).memoizedProps;
+        const props = (fiber as unknown as { memoizedProps?: Record<string, unknown> })
+          .memoizedProps;
         const actionName = (props?.name as string) ?? "action";
         const actionNode = createComponentNode(actionName);
         actionNode.kind = "action";
@@ -125,8 +126,14 @@ export interface RenderResult {
  * dashboard can display the full component hierarchy.
  */
 export function renderToResourceTree(element: ReactElement): ResourceNode;
-export function renderToResourceTree(element: ReactElement, opts: { returnFiberRoot: true }): RenderResult;
-export function renderToResourceTree(element: ReactElement, opts?: { returnFiberRoot?: boolean }): ResourceNode | RenderResult {
+export function renderToResourceTree(
+  element: ReactElement,
+  opts: { returnFiberRoot: true },
+): RenderResult;
+export function renderToResourceTree(
+  element: ReactElement,
+  opts?: { returnFiberRoot?: boolean },
+): ResourceNode | RenderResult {
   const root = createResourceNode(ROOT_TYPE, "root", {});
 
   const container = reconciler.createContainer(

@@ -32,4 +32,6 @@ export interface GroupProps {
  * }
  * ```
  */
-export const Group: ((props: GroupProps) => null) = GROUP_TYPE as unknown as (props: GroupProps) => null;
+export const Group: (props: GroupProps) => null = GROUP_TYPE as unknown as (
+  props: GroupProps,
+) => null;

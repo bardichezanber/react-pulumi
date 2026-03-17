@@ -53,9 +53,7 @@ export function installInterceptor(): () => void {
           ): [T, (value: T | ((prev: T) => T)) => void] {
             // Resolve the default if it's a function
             const defaultValue =
-              typeof initialState === "function"
-                ? (initialState as () => T)()
-                : initialState;
+              typeof initialState === "function" ? (initialState as () => T)() : initialState;
 
             const { index, value } = getNextValue(defaultValue);
 
