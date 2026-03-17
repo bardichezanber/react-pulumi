@@ -1,6 +1,5 @@
-import React from "react";
-import { pulumiToComponent } from "@react-pulumi/core";
 import * as aws from "@pulumi/aws";
+import { pulumiToComponent } from "@react-pulumi/core";
 
 const [AwsProvider] = pulumiToComponent(aws.Provider);
 const [Bucket] = pulumiToComponent(aws.s3.BucketV2);

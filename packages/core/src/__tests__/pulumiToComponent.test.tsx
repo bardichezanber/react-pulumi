@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
 import { createElement, useContext } from "react";
-import { pulumiToComponent } from "../wrap.js";
+import { describe, expect, it } from "vitest";
 import { renderToResourceTree } from "../renderer.js";
+import { pulumiToComponent } from "../wrap.js";
 
 // ── Mock Pulumi resource classes ──
 
@@ -66,12 +66,8 @@ describe("pulumiToComponent returns [Component, Context]", () => {
   });
 
   it("throws when type token cannot be determined", () => {
-    class NoType {
-      constructor(_n: string, _a: unknown) {}
-    }
-    expect(() => pulumiToComponent(NoType as never)).toThrow(
-      "Cannot determine type token",
-    );
+    class NoType {}
+    expect(() => pulumiToComponent(NoType as never)).toThrow("Cannot determine type token");
   });
 });
 
@@ -93,9 +89,7 @@ describe("render-time resource creation", () => {
 
     const [Vcn] = pulumiToComponent(TrackingVcn as never);
 
-    renderToResourceTree(
-      createElement(Vcn, { name: "my-vcn", cidrBlock: "10.0.0.0/16" }),
-    );
+    renderToResourceTree(createElement(Vcn, { name: "my-vcn", cidrBlock: "10.0.0.0/16" }));
 
     expect(instances).toHaveLength(1);
     expect(instances[0].name).toBe("my-vcn");
@@ -162,9 +156,7 @@ describe("Context — useContext reads ancestor instance", () => {
     }
 
     renderToResourceTree(
-      createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" },
-        createElement(SubnetLayer),
-      ),
+      createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" }, createElement(SubnetLayer)),
     );
 
     expect(capturedVcn).not.toBeNull();
@@ -189,11 +181,11 @@ describe("Context — useContext reads ancestor instance", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "outer", cidrBlock: "10.1.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "outer", cidrBlock: "10.1.0.0/16" },
         createElement(OuterChild),
-        createElement(Vcn, { name: "inner", cidrBlock: "10.2.0.0/16" },
-          createElement(InnerChild),
-        ),
+        createElement(Vcn, { name: "inner", cidrBlock: "10.2.0.0/16" }, createElement(InnerChild)),
       );
     }
 
@@ -216,10 +208,14 @@ describe("Context — useContext reads ancestor instance", () => {
 
     function App() {
       return [
-        createElement(Vcn, { name: "vpc-prod", key: "prod", cidrBlock: "10.1.0.0/16" },
+        createElement(
+          Vcn,
+          { name: "vpc-prod", key: "prod", cidrBlock: "10.1.0.0/16" },
           createElement(Reader, { label: "prod" }),
         ),
-        createElement(Vcn, { name: "vpc-staging", key: "staging", cidrBlock: "10.2.0.0/16" },
+        createElement(
+          Vcn,
+          { name: "vpc-staging", key: "staging", cidrBlock: "10.2.0.0/16" },
           createElement(Reader, { label: "staging" }),
         ),
       ] as unknown as React.ReactElement;
@@ -250,7 +246,7 @@ describe("Context — useContext reads ancestor instance", () => {
 describe("render props mode", () => {
   it("passes instance to render prop function", () => {
     const [Vcn] = pulumiToComponent(MockVcn as never);
-    const [Subnet] = pulumiToComponent(MockSubnet as never);
+    const [_Subnet] = pulumiToComponent(MockSubnet as never);
 
     const subnetInstances: MockSubnet[] = [];
     class TrackingSubnet {
@@ -271,12 +267,10 @@ describe("render props mode", () => {
     let receivedVcn: MockVcn | null = null;
 
     renderToResourceTree(
-      createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" },
-        (vcn: MockVcn) => {
-          receivedVcn = vcn;
-          return createElement(TrackedSubnet, { name: "pub", vcnId: vcn.id });
-        },
-      ),
+      createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" }, (vcn: MockVcn) => {
+        receivedVcn = vcn;
+        return createElement(TrackedSubnet, { name: "pub", vcnId: vcn.id });
+      }),
     );
 
     expect(receivedVcn).not.toBeNull();
@@ -296,8 +290,8 @@ describe("render props mode", () => {
     }
 
     renderToResourceTree(
-      createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" },
-        (_vcn: MockVcn) => createElement(DeepChild),
+      createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" }, (_vcn: MockVcn) =>
+        createElement(DeepChild),
       ),
     );
 
@@ -330,7 +324,9 @@ describe("cross-resource Output wiring", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "main", cidrBlock: "10.0.0.0/16" },
         createElement(SubnetLayer),
       );
     }
@@ -356,9 +352,7 @@ describe("leaf resources — Context can be ignored", () => {
 
     const [Instance] = pulumiToComponent(TrackingInstance as never);
 
-    renderToResourceTree(
-      createElement(Instance, { name: "web-0", instanceType: "t3.micro" }),
-    );
+    renderToResourceTree(createElement(Instance, { name: "web-0", instanceType: "t3.micro" }));
 
     expect(instances).toHaveLength(1);
     expect(instances[0].name).toBe("web-0");

@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { createElement, useState, useMemo, useRef, useCallback } from "react";
-import { renderToResourceTree, collectHookKeys } from "../renderer.js";
-import { pulumiToComponent } from "../wrap.js";
+import { createElement, useCallback, useMemo, useRef, useState } from "react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { collectHookKeys, renderToResourceTree } from "../renderer.js";
 import { installInterceptor } from "../state-interceptor.js";
-import { loadState, collectState, resetState } from "../state-store.js";
+import { loadState, resetState } from "../state-store.js";
+import { pulumiToComponent } from "../wrap.js";
 
 // Mock resource
 class MockInstance {
@@ -245,7 +245,7 @@ describe("collectHookKeys", () => {
     }
 
     function App() {
-      const [count] = useState(1);
+      const [_count] = useState(1);
       return createElement(Inner);
     }
 

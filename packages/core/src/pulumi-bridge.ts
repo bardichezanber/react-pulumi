@@ -1,5 +1,5 @@
-import type { ResourceNode } from "./resource-tree.js";
 import { getRegistry, type PulumiResourceConstructor } from "./registry.js";
+import type { ResourceNode } from "./resource-tree.js";
 import { ROOT_TYPE } from "./resource-tree.js";
 import { extractResourcePackage } from "./wrap.js";
 
@@ -111,7 +111,10 @@ export function materializeTree(
     });
   }
 
-  function buildOpts(node: ResourceNode, pulumiParent: unknown | undefined): Record<string, unknown> {
+  function buildOpts(
+    node: ResourceNode,
+    pulumiParent: unknown | undefined,
+  ): Record<string, unknown> {
     const opts: Record<string, unknown> = {};
     if (pulumiParent) opts.parent = pulumiParent;
 
@@ -157,7 +160,10 @@ export function materializeTree(
       if (ComponentResourceCtor) {
         // ComponentResource(type, name, args, opts) — pass args={} and opts with parent
         groupParent = new (ComponentResourceCtor as new (...args: unknown[]) => unknown)(
-          componentType, node.name, {}, opts,
+          componentType,
+          node.name,
+          {},
+          opts,
         );
         resources.push(groupParent);
         resourceInstances.set(node.name, groupParent);
@@ -171,8 +177,13 @@ export function materializeTree(
       }
 
       // Signal that the ComponentResource is fully constructed
-      if (groupParent && typeof (groupParent as Record<string, unknown>).registerOutputs === "function") {
-        (groupParent as { registerOutputs: (o: Record<string, unknown>) => void }).registerOutputs({});
+      if (
+        groupParent &&
+        typeof (groupParent as Record<string, unknown>).registerOutputs === "function"
+      ) {
+        (groupParent as { registerOutputs: (o: Record<string, unknown>) => void }).registerOutputs(
+          {},
+        );
       }
 
       return;

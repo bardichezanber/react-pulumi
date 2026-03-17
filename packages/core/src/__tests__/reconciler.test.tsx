@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
 import { createElement } from "react";
-import { renderToResourceTree } from "../renderer.js";
-import { registerResource } from "../registry.js";
-import { ROOT_TYPE, GROUP_TYPE } from "../resource-tree.js";
+import { describe, expect, it } from "vitest";
 import { materializeTree } from "../pulumi-bridge.js";
+import { registerResource } from "../registry.js";
+import { renderToResourceTree } from "../renderer.js";
 import type { ResourceNode } from "../resource-tree.js";
+import { GROUP_TYPE, ROOT_TYPE } from "../resource-tree.js";
 
 // Mock Pulumi resource class
 class MockBucket {
@@ -264,11 +264,7 @@ describe("provider detection (host component path)", () => {
       return createElement(Bucket, { name: "deep-bucket" });
     }
     function App() {
-      return createElement(
-        AwsProvider,
-        { name: "p", region: "us-west-2" },
-        createElement(Inner),
-      );
+      return createElement(AwsProvider, { name: "p", region: "us-west-2" }, createElement(Inner));
     }
 
     const tree = renderToResourceTree(createElement(App));
@@ -369,7 +365,7 @@ describe("materializeTree (host component path)", () => {
       meta: {},
     };
 
-    expect(() => materializeTree(tree)).toThrow('No Pulumi resource class registered');
+    expect(() => materializeTree(tree)).toThrow("No Pulumi resource class registered");
   });
 
   it("provider flows via opts.provider, not parent", () => {
@@ -435,7 +431,11 @@ describe("materializeTree (host component path)", () => {
     function App() {
       return [
         createElement(Bucket, { name: "config-bucket", key: "a" }),
-        createElement(Bucket, { name: "data-bucket", opts: { dependsOn: ["config-bucket"] }, key: "b" }),
+        createElement(Bucket, {
+          name: "data-bucket",
+          opts: { dependsOn: ["config-bucket"] },
+          key: "b",
+        }),
       ] as unknown as React.ReactElement;
     }
 

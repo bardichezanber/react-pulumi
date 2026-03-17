@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeEach } from "vitest";
 import { createElement } from "react";
-import { renderToPulumi } from "../render-to-pulumi.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { resetStackRefCache, useStackOutput } from "../hooks/useStackOutput.js";
 import { setPulumiSDK } from "../pulumi-bridge.js";
+import { renderToPulumi } from "../render-to-pulumi.js";
 import { pulumiToComponent } from "../wrap.js";
-import { resetStackRefCache } from "../hooks/useStackOutput.js";
-import { useStackOutput } from "../hooks/useStackOutput.js";
 
 // Mock resource
 class MockSecurityGroup {
@@ -32,7 +31,9 @@ function createMockPulumiSDK(stackOutputs: Record<string, Record<string, unknown
 
   return {
     Config: class MockConfig {
-      get(): string | undefined { return undefined; }
+      get(): string | undefined {
+        return undefined;
+      }
     },
     StackReference: class MockStackReference {
       private stackName: string;

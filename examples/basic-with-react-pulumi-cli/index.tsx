@@ -1,6 +1,5 @@
-import React from "react";
-import { pulumiToComponent } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
+import { pulumiToComponent } from "@react-pulumi/core";
 
 // Wrap Pulumi resources as React components — returns [Component, Context]
 const [RandomPet] = pulumiToComponent(random.RandomPet);

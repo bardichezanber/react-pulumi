@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-import { ResourceGraph } from "../web-renderer.js";
-import { useVizStore } from "../store.js";
 import type { ResourceNode } from "@react-pulumi/core";
+import { useEffect } from "react";
+import { useVizStore } from "../store.js";
+import { ResourceGraph } from "../web-renderer.js";
 
 export function App() {
   const setResourceTree = useVizStore((s) => s.setResourceTree);
@@ -21,7 +21,9 @@ export function App() {
         };
         if (!active) return;
         if (data.tree) setResourceTree(data.tree);
-        setDeploymentStatus(data.status as ReturnType<typeof useVizStore.getState>["deploymentStatus"]);
+        setDeploymentStatus(
+          data.status as ReturnType<typeof useVizStore.getState>["deploymentStatus"],
+        );
       } catch {
         // server not ready yet, retry
       }

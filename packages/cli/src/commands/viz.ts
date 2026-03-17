@@ -15,9 +15,7 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
   const App = mod.default ?? mod.App;
 
   if (!App) {
-    console.error(
-      "Entry file must export a default component or named `App` export.",
-    );
+    console.error("Entry file must export a default component or named `App` export.");
     process.exit(1);
   }
 
@@ -31,9 +29,7 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
 
   const server = await startVizServer({ port, tree });
 
-  console.log(
-    `[react-pulumi] Viz dashboard ready at http://localhost:${server.port}`,
-  );
+  console.log(`[react-pulumi] Viz dashboard ready at http://localhost:${server.port}`);
 
   // Keep the process alive
   process.on("SIGINT", () => {

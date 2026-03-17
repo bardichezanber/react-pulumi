@@ -1,6 +1,5 @@
-import React from "react";
-import { pulumiToComponent, Group } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
+import { Group, pulumiToComponent } from "@react-pulumi/core";
 
 const [RandomPet] = pulumiToComponent(random.RandomPet);
 const [RandomString] = pulumiToComponent(random.RandomString);

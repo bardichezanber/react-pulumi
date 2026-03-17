@@ -1,16 +1,9 @@
+import { Background, Controls, type Edge, MiniMap, type Node, ReactFlow } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
-import {
-  ReactFlow,
-  type Node,
-  type Edge,
-  Background,
-  Controls,
-  MiniMap,
-} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useVizStore } from "./store.js";
 import type { ResourceNode } from "@react-pulumi/core";
 import { ROOT_TYPE } from "@react-pulumi/core";
+import { useVizStore } from "./store.js";
 
 const COMPONENT_STYLE = {
   background: "#2d2b55",
@@ -56,9 +49,7 @@ const RESOURCE_STYLE = {
   fontSize: 12,
 } as const;
 
-function treeToNodesAndEdges(
-  root: ResourceNode,
-): { nodes: Node[]; edges: Edge[] } {
+function treeToNodesAndEdges(root: ResourceNode): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   let yOffset = 0;
@@ -228,12 +219,7 @@ export function ResourceGraph() {
         </div>
       </div>
       <div style={{ width: "100%", height: "calc(100vh - 44px)" }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onInit={onInit}
-          fitView
-        >
+        <ReactFlow nodes={nodes} edges={edges} onInit={onInit} fitView>
           <Background />
           <Controls />
           <MiniMap />

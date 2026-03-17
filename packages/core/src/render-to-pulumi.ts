@@ -10,12 +10,12 @@
  */
 
 import { createElement, type FC } from "react";
-import { renderToResourceTree, collectHookKeys } from "./renderer.js";
-import { getPulumiSDK } from "./pulumi-bridge.js";
-import { loadState, collectState, resetState, type PersistedState } from "./state-store.js";
-import { installInterceptor } from "./state-interceptor.js";
 import { resetConfigCache } from "./hooks/useConfig.js";
 import { resetStackRefCache } from "./hooks/useStackOutput.js";
+import { getPulumiSDK } from "./pulumi-bridge.js";
+import { collectHookKeys, renderToResourceTree } from "./renderer.js";
+import { installInterceptor } from "./state-interceptor.js";
+import { collectState, loadState, type PersistedState, resetState } from "./state-store.js";
 
 function keysMatch(prev: string[], current: string[]): boolean {
   if (prev.length !== current.length) return false;
@@ -35,7 +35,9 @@ function createStateHookResource(pulumi: any, state: PersistedState): void {
   // it (no @types/node in this package). Works fine at runtime in Node.js.
   const cpModule = "child_process";
   async function execPulumiCmd(cmd: string): Promise<void> {
-    const cp = (await import(cpModule)) as { execSync: (cmd: string, opts: { stdio: string }) => void };
+    const cp = (await import(cpModule)) as {
+      execSync: (cmd: string, opts: { stdio: string }) => void;
+    };
     cp.execSync(cmd, { stdio: "ignore" });
   }
 
@@ -60,11 +62,7 @@ function createStateHookResource(pulumi: any, state: PersistedState): void {
     },
   };
 
-  new pulumi.dynamic.Resource(
-    provider,
-    "__react_pulumi_state",
-    { state: stateJson },
-  );
+  new pulumi.dynamic.Resource(provider, "__react_pulumi_state", { state: stateJson });
 }
 
 /**
@@ -88,16 +86,14 @@ export function renderToPulumi(Component: FC): () => void {
     // 1. Read persisted state from Pulumi config (synchronous)
     const config = new pulumi.Config("react-pulumi");
     const stateJson = config.get("state") as string | undefined;
-    const prevState: PersistedState = stateJson
-      ? JSON.parse(stateJson)
-      : { keys: [], values: [] };
+    const prevState: PersistedState = stateJson ? JSON.parse(stateJson) : { keys: [], values: [] };
     loadState(prevState);
 
     // 2. Install useState interceptor and render
     //    Resources are created at render time (as side effects of FC components
     //    returned by pulumiToComponent), so no separate materializeTree step needed.
     const cleanup = installInterceptor();
-    let renderResult;
+    let renderResult: ReturnType<typeof renderToResourceTree> | undefined;
     try {
       renderResult = renderToResourceTree(createElement(Component), {
         returnFiberRoot: true,

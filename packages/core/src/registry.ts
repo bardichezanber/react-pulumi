@@ -10,16 +10,11 @@ export interface PulumiResourceConstructor {
 
 const registry = new Map<string, PulumiResourceConstructor>();
 
-export function registerResource(
-  typeToken: string,
-  ctor: PulumiResourceConstructor,
-): void {
+export function registerResource(typeToken: string, ctor: PulumiResourceConstructor): void {
   registry.set(typeToken, ctor);
 }
 
-export function getResourceClass(
-  typeToken: string,
-): PulumiResourceConstructor | undefined {
+export function getResourceClass(typeToken: string): PulumiResourceConstructor | undefined {
   return registry.get(typeToken);
 }
 

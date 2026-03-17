@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createElement, useState } from "react";
-import { renderToPulumi } from "../render-to-pulumi.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setPulumiSDK } from "../pulumi-bridge.js";
-import { pulumiToComponent } from "../wrap.js";
+import { renderToPulumi } from "../render-to-pulumi.js";
 import { resetState } from "../state-store.js";
+import { pulumiToComponent } from "../wrap.js";
 
 // ── Mock Pulumi resource ──
 
@@ -178,9 +178,7 @@ describe("renderToPulumi", () => {
 
     renderToPulumi(NewApp)();
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("Component structure changed"),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Component structure changed"));
 
     warnSpy.mockRestore();
   });

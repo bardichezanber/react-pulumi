@@ -7,12 +7,13 @@
  * They verify that Context-based cross-resource wiring, render props,
  * and nested scoping all work correctly within a real Pulumi program lifecycle.
  */
-import { describe, it, expect, beforeEach } from "vitest";
-import { createElement, useState, useContext } from "react";
-import { renderToPulumi } from "../render-to-pulumi.js";
+
+import { createElement, useContext, useState } from "react";
+import { beforeEach, describe, expect, it } from "vitest";
 import { setPulumiSDK } from "../pulumi-bridge.js";
-import { pulumiToComponent } from "../wrap.js";
+import { renderToPulumi } from "../render-to-pulumi.js";
 import { resetState } from "../state-store.js";
+import { pulumiToComponent } from "../wrap.js";
 
 // ── Tracking infrastructure ──
 
@@ -59,7 +60,9 @@ function createMockPulumiSDK(configStore: Record<string, string> = {}) {
   return {
     Config: class MockConfig {
       private ns: string;
-      constructor(ns: string) { this.ns = ns; }
+      constructor(ns: string) {
+        this.ns = ns;
+      }
       get(key: string): string | undefined {
         return configStore[`${this.ns}:${key}`];
       }
@@ -103,11 +106,13 @@ describe("E2E: Context mode through renderToPulumi", () => {
 
     function SubnetLayer() {
       const vcn = useContext(VcnCtx);
-      return createElement(Subnet, {
-        name: "pub-subnet",
-        vcnId: (vcn as unknown as { id: string }).id,
-        cidrBlock: "10.0.1.0/24",
-      },
+      return createElement(
+        Subnet,
+        {
+          name: "pub-subnet",
+          vcnId: (vcn as unknown as { id: string }).id,
+          cidrBlock: "10.0.1.0/24",
+        },
         createElement(ComputeLayer),
       );
     }
@@ -124,7 +129,9 @@ describe("E2E: Context mode through renderToPulumi", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "main-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "main-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(SubnetLayer),
       );
     }
@@ -159,10 +166,14 @@ describe("E2E: Context mode through renderToPulumi", () => {
 
     function App() {
       return [
-        createElement(Vcn, { name: "vpc-prod", key: "prod", cidrBlock: "10.1.0.0/16" },
+        createElement(
+          Vcn,
+          { name: "vpc-prod", key: "prod", cidrBlock: "10.1.0.0/16" },
           createElement(Reader, { label: "prod" }),
         ),
-        createElement(Vcn, { name: "vpc-staging", key: "staging", cidrBlock: "10.2.0.0/16" },
+        createElement(
+          Vcn,
+          { name: "vpc-staging", key: "staging", cidrBlock: "10.2.0.0/16" },
           createElement(Reader, { label: "staging" }),
         ),
       ] as unknown as React.ReactElement;
@@ -196,9 +207,13 @@ describe("E2E: Context mode through renderToPulumi", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "outer-vpc", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "outer-vpc", cidrBlock: "10.0.0.0/16" },
         createElement(OuterReader),
-        createElement(Vcn, { name: "inner-vpc", cidrBlock: "10.1.0.0/16" },
+        createElement(
+          Vcn,
+          { name: "inner-vpc", cidrBlock: "10.1.0.0/16" },
           createElement(InnerReader),
         ),
       );
@@ -220,13 +235,17 @@ describe("E2E: render props through renderToPulumi", () => {
     setPulumiSDK(sdk);
 
     function App() {
-      return createElement(Vcn, { name: "rp-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "rp-vcn", cidrBlock: "10.0.0.0/16" },
         (vcn: { id: string }) =>
-          createElement(Subnet, {
-            name: "rp-subnet",
-            vcnId: vcn.id,
-            cidrBlock: "10.0.1.0/24",
-          },
+          createElement(
+            Subnet,
+            {
+              name: "rp-subnet",
+              vcnId: vcn.id,
+              cidrBlock: "10.0.1.0/24",
+            },
             (subnet: { id: string }) =>
               createElement(Instance, {
                 name: "rp-inst",
@@ -261,11 +280,8 @@ describe("E2E: render props through renderToPulumi", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "mixed-vcn", cidrBlock: "10.0.0.0/16" },
-        (_vcn: unknown) =>
-          createElement(Subnet, { name: "mixed-subnet" },
-            createElement(DeepReader),
-          ),
+      return createElement(Vcn, { name: "mixed-vcn", cidrBlock: "10.0.0.0/16" }, (_vcn: unknown) =>
+        createElement(Subnet, { name: "mixed-subnet" }, createElement(DeepReader)),
       );
     }
 
@@ -297,7 +313,9 @@ describe("E2E: Context + useState coexist", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "state-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "state-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(Instances),
       );
     }
@@ -340,14 +358,16 @@ describe("E2E: Context + useState coexist", () => {
     }
 
     function App1() {
-      return createElement(Vcn, { name: "run1-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "run1-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(Instances),
       );
     }
 
     renderToPulumi(App1)();
 
-    expect(created.filter(r => r.type === "e2e:core:Instance")).toHaveLength(2);
+    expect(created.filter((r) => r.type === "e2e:core:Instance")).toHaveLength(2);
 
     // Persist & change replicas to 5
     configStore["react-pulumi:state"] = JSON.stringify({
@@ -361,14 +381,16 @@ describe("E2E: Context + useState coexist", () => {
     setPulumiSDK(sdk2);
 
     function App2() {
-      return createElement(Vcn, { name: "run2-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "run2-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(Instances),
       );
     }
 
     renderToPulumi(App2)();
 
-    const instances = created.filter(r => r.type === "e2e:core:Instance");
+    const instances = created.filter((r) => r.type === "e2e:core:Instance");
     expect(instances).toHaveLength(5);
     // All instances wired to Vcn via Context
     for (const inst of instances) {
@@ -396,8 +418,12 @@ describe("E2E: multiple Context types", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "multi-vcn", cidrBlock: "10.0.0.0/16" },
-        createElement(SecurityGroup, { name: "web-sg", vcnId: "vcn-001" },
+      return createElement(
+        Vcn,
+        { name: "multi-vcn", cidrBlock: "10.0.0.0/16" },
+        createElement(
+          SecurityGroup,
+          { name: "web-sg", vcnId: "vcn-001" },
           createElement(ComputeLayer),
         ),
       );
@@ -406,7 +432,7 @@ describe("E2E: multiple Context types", () => {
     renderToPulumi(App)();
 
     expect(created).toHaveLength(3);
-    const inst = created.find(r => r.name === "multi-ctx-inst")!;
+    const inst = created.find((r) => r.name === "multi-ctx-inst")!;
     expect(inst.args.vcnId).toBe("vcn-001");
     expect(inst.args.securityGroupId).toBe("sg-001");
   });
@@ -430,7 +456,9 @@ describe("E2E: conditional rendering with Context", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "cond-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "cond-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(MaybeSubnet, { create: true }),
         createElement(MaybeSubnet, { create: false }),
       );
@@ -468,7 +496,9 @@ describe("E2E: dynamic list with Context", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "list-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "list-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(Subnets),
       );
     }
@@ -477,12 +507,12 @@ describe("E2E: dynamic list with Context", () => {
 
     // 1 Vcn + 3 Subnets
     expect(created).toHaveLength(4);
-    const subnets = created.filter(r => r.type === "e2e:core:Subnet");
+    const subnets = created.filter((r) => r.type === "e2e:core:Subnet");
     expect(subnets).toHaveLength(3);
     for (const s of subnets) {
       expect(s.args.vcnId).toBe("vcn-001");
     }
-    expect(subnets.map(s => s.name)).toEqual(["subnet-a", "subnet-b", "subnet-c"]);
+    expect(subnets.map((s) => s.name)).toEqual(["subnet-a", "subnet-b", "subnet-c"]);
   });
 });
 
@@ -523,7 +553,9 @@ describe("E2E: opts passthrough via Context", () => {
     }
 
     function App() {
-      return createElement(Vcn, { name: "parent-vcn", cidrBlock: "10.0.0.0/16" },
+      return createElement(
+        Vcn,
+        { name: "parent-vcn", cidrBlock: "10.0.0.0/16" },
         createElement(ChildSubnet),
       );
     }

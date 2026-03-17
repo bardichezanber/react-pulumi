@@ -1,4 +1,4 @@
-import { resolve, basename } from "node:path";
+import { basename, resolve } from "node:path";
 import { createElement } from "react";
 
 interface DestroyOptions {
@@ -22,7 +22,9 @@ export async function destroy(entry: string, opts: DestroyOptions): Promise<void
 
   const { LocalWorkspace } = await import("@pulumi/pulumi/automation/index.js");
   const pulumi = await import("@pulumi/pulumi");
-  const { renderToResourceTree, materializeTree, setPulumiSDK } = await import("@react-pulumi/core");
+  const { renderToResourceTree, materializeTree, setPulumiSDK } = await import(
+    "@react-pulumi/core"
+  );
   setPulumiSDK(pulumi);
 
   const stack = await LocalWorkspace.createOrSelectStack({

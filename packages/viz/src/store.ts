@@ -1,9 +1,23 @@
-import { create } from "zustand";
 import type { ResourceNode } from "@react-pulumi/core";
+import { create } from "zustand";
 
-export type DeploymentStatus = "idle" | "previewing" | "deploying" | "destroying" | "complete" | "error";
+export type DeploymentStatus =
+  | "idle"
+  | "previewing"
+  | "deploying"
+  | "destroying"
+  | "complete"
+  | "error";
 
-export type ResourceStatus = "pending" | "creating" | "created" | "updating" | "updated" | "deleting" | "deleted" | "failed";
+export type ResourceStatus =
+  | "pending"
+  | "creating"
+  | "created"
+  | "updating"
+  | "updated"
+  | "deleting"
+  | "deleted"
+  | "failed";
 
 export interface ResourceStatusEntry {
   urn: string;

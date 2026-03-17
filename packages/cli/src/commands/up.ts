@@ -1,4 +1,4 @@
-import { resolve, basename } from "node:path";
+import { basename, resolve } from "node:path";
 import { createElement } from "react";
 
 interface UpOptions {
