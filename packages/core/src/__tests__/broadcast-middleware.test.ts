@@ -1,30 +1,40 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { BroadcastMiddleware } from "../middlewares/broadcast-middleware.js";
-import type {
-  DeployOutcomeEvent,
-  HydrateEvent,
-  SetterCallEvent,
-} from "../state-middleware.js";
+import type { DeployOutcomeEvent, HydrateEvent, SetterCallEvent } from "../state-middleware.js";
 
 function makeHydrate(index: number, value: unknown): HydrateEvent {
   return {
-    type: "hydrate", index, value, defaultValue: 0,
-    seq: index, timestamp: Date.now(), deployId: "test",
+    type: "hydrate",
+    index,
+    value,
+    defaultValue: 0,
+    seq: index,
+    timestamp: Date.now(),
+    deployId: "test",
   };
 }
 
 function makeSetter(index: number, prev: unknown, next: unknown): SetterCallEvent {
   return {
-    type: "setter_call", index, previousValue: prev, newValue: next,
-    seq: 100 + index, timestamp: Date.now(), deployId: "test",
+    type: "setter_call",
+    index,
+    previousValue: prev,
+    newValue: next,
+    seq: 100 + index,
+    timestamp: Date.now(),
+    deployId: "test",
   };
 }
 
 function makeOutcome(success: boolean): DeployOutcomeEvent {
   return {
-    type: "deploy_outcome", deployId: "test", success,
+    type: "deploy_outcome",
+    deployId: "test",
+    success,
     stateSnapshot: { keys: ["App:0"], values: [1] },
-    keyMap: { 0: "App:0" }, seq: 999, timestamp: Date.now(),
+    keyMap: { 0: "App:0" },
+    seq: 999,
+    timestamp: Date.now(),
   };
 }
 
@@ -77,7 +87,9 @@ describe("BroadcastMiddleware", () => {
   });
 
   it("does not crash when broadcast function throws", () => {
-    const throwMw = new BroadcastMiddleware(() => { throw new Error("ws closed"); });
+    const throwMw = new BroadcastMiddleware(() => {
+      throw new Error("ws closed");
+    });
 
     // Should not throw
     throwMw.onStateChange(makeHydrate(0, 1));

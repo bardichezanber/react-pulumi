@@ -21,10 +21,10 @@ import { getPulumiSDK } from "./pulumi-bridge.js";
 import { collectHookKeys, renderToResourceTree } from "./renderer.js";
 import { installInterceptor } from "./state-interceptor.js";
 import {
-  type StateMiddleware,
   dispatchDeployOutcome,
   nextSeq,
   resetMiddlewareState,
+  type StateMiddleware,
 } from "./state-middleware.js";
 import { collectState, loadState, type PersistedState, resetState } from "./state-store.js";
 

@@ -1,21 +1,17 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  ActionLogMiddleware,
-  type ActionLog,
-} from "../middlewares/action-log-middleware.js";
-import type {
-  DeployOutcomeEvent,
-  HydrateEvent,
-  SetterCallEvent,
-} from "../state-middleware.js";
+import { type ActionLog, ActionLogMiddleware } from "../middlewares/action-log-middleware.js";
+import type { DeployOutcomeEvent, HydrateEvent, SetterCallEvent } from "../state-middleware.js";
 
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `react-pulumi-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(
+    tmpdir(),
+    `react-pulumi-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   mkdirSync(testDir, { recursive: true });
 });
 
@@ -112,7 +108,7 @@ describe("ActionLogMiddleware", () => {
 
     it("warns but does not throw on write failure", () => {
       // Use a non-writable path
-      const badDir = join(testDir, "nonexistent", "deep", "path");
+      const _badDir = join(testDir, "nonexistent", "deep", "path");
       // Make the parent non-writable to simulate failure
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 

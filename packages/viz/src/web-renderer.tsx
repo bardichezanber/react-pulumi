@@ -64,14 +64,26 @@ function StatusDot({ status }: { status?: ResourceStatus }) {
 function ResourceNodeComponent({ data }: NodeProps) {
   const d = data as any;
   return (
-    <div style={{
-      position: "relative",
-      background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)",
-      padding: "6px 12px", minWidth: 200, fontFamily: "var(--font-sans)",
-    }}>
+    <div
+      style={{
+        position: "relative",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-md)",
+        padding: "6px 12px",
+        minWidth: 200,
+        fontFamily: "var(--font-sans)",
+      }}
+    >
       <Handle type="target" position={Position.Top} style={{ background: "var(--border)" }} />
       <StatusDot status={d.resourceStatus} />
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-xs)",
+          color: "var(--text-muted)",
+        }}
+      >
         {d.typeToken}
       </div>
       <div style={{ fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text)" }}>
@@ -85,21 +97,38 @@ function ResourceNodeComponent({ data }: NodeProps) {
 function GhostNodeComponent({ data }: NodeProps) {
   const d = data as any;
   return (
-    <div style={{
-      position: "relative",
-      background: "var(--surface)", border: "1px dashed var(--error)", borderRadius: "var(--radius-md)",
-      padding: "6px 12px", minWidth: 200, fontFamily: "var(--font-sans)",
-      opacity: 0.4, pointerEvents: "none",
-    }}>
+    <div
+      style={{
+        position: "relative",
+        background: "var(--surface)",
+        border: "1px dashed var(--error)",
+        borderRadius: "var(--radius-md)",
+        padding: "6px 12px",
+        minWidth: 200,
+        fontFamily: "var(--font-sans)",
+        opacity: 0.4,
+        pointerEvents: "none",
+      }}
+    >
       <Handle type="target" position={Position.Top} style={{ background: "var(--error)" }} />
       <StatusDot status="deleted" />
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-xs)",
+          color: "var(--text-dim)",
+        }}
+      >
         {d.typeToken}
       </div>
-      <div style={{
-        fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text-dim)",
-        textDecoration: "line-through",
-      }}>
+      <div
+        style={{
+          fontSize: "var(--text-base)",
+          fontWeight: 500,
+          color: "var(--text-dim)",
+          textDecoration: "line-through",
+        }}
+      >
         {d.label}
       </div>
       <Handle type="source" position={Position.Bottom} style={{ background: "var(--error)" }} />
@@ -109,12 +138,24 @@ function GhostNodeComponent({ data }: NodeProps) {
 
 function ComponentNodeComponent({ data }: NodeProps) {
   return (
-    <div style={{
-      background: "rgba(14,165,233,0.04)", border: "1px dashed var(--accent)", borderRadius: "var(--radius-md)",
-      padding: "6px 12px", minWidth: 200, fontFamily: "var(--font-sans)",
-    }}>
+    <div
+      style={{
+        background: "rgba(14,165,233,0.04)",
+        border: "1px dashed var(--accent)",
+        borderRadius: "var(--radius-md)",
+        padding: "6px 12px",
+        minWidth: 200,
+        fontFamily: "var(--font-sans)",
+      }}
+    >
       <Handle type="target" position={Position.Top} style={{ background: "var(--accent)" }} />
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-xs)",
+          color: "var(--text-muted)",
+        }}
+      >
         {(data as any).typeToken}
       </div>
       <div style={{ fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text)" }}>
@@ -139,37 +180,70 @@ function VizInputNodeComponent({ data }: NodeProps) {
   }, [localVal, d]);
 
   return (
-    <div style={{
-      background: "linear-gradient(135deg, var(--surface) 0%, rgba(14,165,233,0.06) 100%)",
-      border: editing ? "1px solid var(--accent-hover)" : "1px solid var(--accent)",
-      borderRadius: "var(--radius-md)", padding: "6px 12px", minWidth: 200,
-      fontFamily: "var(--font-sans)", transition: "border-color 0.15s",
-    }}>
+    <div
+      style={{
+        background: "linear-gradient(135deg, var(--surface) 0%, rgba(14,165,233,0.06) 100%)",
+        border: editing ? "1px solid var(--accent-hover)" : "1px solid var(--accent)",
+        borderRadius: "var(--radius-md)",
+        padding: "6px 12px",
+        minWidth: 200,
+        fontFamily: "var(--font-sans)",
+        transition: "border-color 0.15s",
+      }}
+    >
       <Handle type="target" position={Position.Top} style={{ background: "var(--accent)" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-        <span style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", flex: 1 }}>{d.label}</span>
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "var(--accent)",
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", flex: 1 }}>
+          {d.label}
+        </span>
         {editing ? (
           <input
-            autoFocus
             type={d.inputType ?? "text"}
             value={localVal}
             onChange={(e) => setLocalVal(e.target.value)}
             onBlur={handleSubmit}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             style={{
-              fontFamily: "var(--font-mono)", fontSize: "var(--text-base)", color: "var(--text)",
-              background: "var(--bg)", border: "1px solid var(--accent)", borderRadius: 3,
-              padding: "1px 6px", width: 70, textAlign: "right", outline: "none",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-base)",
+              color: "var(--text)",
+              background: "var(--bg)",
+              border: "1px solid var(--accent)",
+              borderRadius: 3,
+              padding: "1px 6px",
+              width: 70,
+              textAlign: "right",
+              outline: "none",
             }}
           />
         ) : (
           <span
+            role="button"
+            tabIndex={0}
             onClick={() => setEditing(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setEditing(true);
+            }}
             style={{
-              fontFamily: "var(--font-mono)", fontSize: "var(--text-base)", color: "var(--text)",
-              background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3,
-              padding: "1px 6px", minWidth: 50, textAlign: "right", cursor: "text",
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-base)",
+              color: "var(--text)",
+              background: "var(--bg)",
+              border: "1px solid var(--border)",
+              borderRadius: 3,
+              padding: "1px 6px",
+              minWidth: 50,
+              textAlign: "right",
+              cursor: "text",
             }}
           >
             {d.value ?? "—"}
@@ -177,7 +251,15 @@ function VizInputNodeComponent({ data }: NodeProps) {
         )}
       </div>
       {d.hint && (
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2, paddingLeft: 14 }}>
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--text-xs)",
+            color: "var(--text-dim)",
+            marginTop: 2,
+            paddingLeft: 14,
+          }}
+        >
           {d.hint}
         </div>
       )}
@@ -198,20 +280,37 @@ function VizButtonNodeComponent({ data }: NodeProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") handleClick();
+      }}
       style={{
         background: flash ? "var(--accent-muted)" : "var(--surface)",
-        border: "1px dashed var(--border)", borderRadius: "var(--radius-md)",
-        padding: "6px 12px", minWidth: 160, fontFamily: "var(--font-sans)",
-        cursor: "pointer", transition: "border-color 0.15s, background 0.05s",
+        border: "1px dashed var(--border)",
+        borderRadius: "var(--radius-md)",
+        padding: "6px 12px",
+        minWidth: 160,
+        fontFamily: "var(--font-sans)",
+        cursor: "pointer",
+        transition: "border-color 0.15s, background 0.05s",
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLDivElement).style.borderStyle = "solid"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLDivElement).style.borderStyle = "dashed"; }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--accent)";
+        (e.currentTarget as HTMLDivElement).style.borderStyle = "solid";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
+        (e.currentTarget as HTMLDivElement).style.borderStyle = "dashed";
+      }}
     >
       <Handle type="target" position={Position.Top} style={{ background: "var(--border)" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>▶</span>
-        <span style={{ fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text)" }}>{d.label}</span>
+        <span style={{ fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text)" }}>
+          {d.label}
+        </span>
       </div>
       <Handle type="source" position={Position.Bottom} style={{ background: "var(--border)" }} />
     </div>
@@ -253,7 +352,15 @@ function getTypeToken(node: ResourceNode): string {
 
 function treeToNodesAndEdges(
   root: ResourceNode,
-  vizControls: Array<{ name: string; controlType: string; label?: string; value?: unknown; inputType?: string; min?: number; max?: number }>,
+  vizControls: Array<{
+    name: string;
+    controlType: string;
+    label?: string;
+    value?: unknown;
+    inputType?: string;
+    min?: number;
+    max?: number;
+  }>,
   resourceStatuses: Record<string, import("./types.js").ResourceStatusEntry>,
   onAction?: () => void,
 ): { nodes: Node[]; edges: Edge[] } {
@@ -316,15 +423,18 @@ function treeToNodesAndEdges(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ value: val }),
-        }).then(() => { setTimeout(() => onAction?.(), 200); });
+        }).then(() => {
+          setTimeout(() => onAction?.(), 200);
+        });
       };
     } else if (nodeType === "vizButton") {
       const ctrl = buttons[buttonIdx++];
       baseData.label = ctrl?.label ?? ctrl?.name ?? node.name;
       const ctrlName = ctrl?.name ?? node.name ?? "";
       baseData.onClick = () => {
-        fetch(`/api/viz-controls/${encodeURIComponent(ctrlName)}`, { method: "POST" })
-          .then(() => { setTimeout(() => onAction?.(), 200); });
+        fetch(`/api/viz-controls/${encodeURIComponent(ctrlName)}`, { method: "POST" }).then(() => {
+          setTimeout(() => onAction?.(), 200);
+        });
       };
     } else {
       // For __component__ nodes: node.name IS the type token (e.g., "aws:ec2/vpc:Vpc")
@@ -332,7 +442,9 @@ function treeToNodesAndEdges(
       // For host resource nodes: node.type is the type token, node.name is the logical name
       const resourceName = (node.meta as any)?.resourceName ?? "";
       baseData.typeToken = typeToken;
-      baseData.label = resourceName || (typeToken.includes(":") ? typeToken.split(":").pop() ?? typeToken : typeToken);
+      baseData.label =
+        resourceName ||
+        (typeToken.includes(":") ? (typeToken.split(":").pop() ?? typeToken) : typeToken);
 
       // Attach resource status for the status dot indicator
       const statusKey = `${typeToken}::${resourceName || node.name || ""}`;
@@ -358,7 +470,10 @@ function treeToNodesAndEdges(
         source: parentId,
         target: id,
         animated: isComponent,
-        style: { stroke: isComponent ? "var(--accent)" : "var(--border)", opacity: isComponent ? 0.4 : 1 },
+        style: {
+          stroke: isComponent ? "var(--accent)" : "var(--border)",
+          opacity: isComponent ? 0.4 : 1,
+        },
       });
     }
 
@@ -370,7 +485,7 @@ function treeToNodesAndEdges(
   walk(root, 0);
 
   // ── Ghost nodes: deployed resources no longer in the tree ──
-  for (const [statusKey, entry] of Object.entries(resourceStatuses)) {
+  for (const [statusKey, _entry] of Object.entries(resourceStatuses)) {
     if (liveStatusKeys.has(statusKey)) continue;
     // Skip non-resource entries (e.g., pulumi:pulumi:Stack, providers)
     if (statusKey.includes("pulumi:pulumi:") || statusKey.includes("pulumi:providers:")) continue;
@@ -412,13 +527,26 @@ export function ResourceGraph() {
 
   // Refresh controls + tree from server
   const refreshAfterAction = useCallback(() => {
-    fetch("/api/viz-controls").then((r) => r.json()).then((d: any) => setVizControls(d.controls)).catch(() => {});
-    fetch("/api/tree").then((r) => r.json()).then((d: any) => { if (d.tree) setResourceTree(d.tree); }).catch(() => {});
+    fetch("/api/viz-controls")
+      .then((r) => r.json())
+      .then((d: any) => setVizControls(d.controls))
+      .catch(() => {});
+    fetch("/api/tree")
+      .then((r) => r.json())
+      .then((d: any) => {
+        if (d.tree) setResourceTree(d.tree);
+      })
+      .catch(() => {});
   }, [setVizControls, setResourceTree]);
 
   const { nodes, edges } = useMemo(() => {
     if (!displayTree) return { nodes: [], edges: [] };
-    return treeToNodesAndEdges(displayTree, vizControls, resourceStatuses, timeTravelTree ? undefined : refreshAfterAction);
+    return treeToNodesAndEdges(
+      displayTree,
+      vizControls,
+      resourceStatuses,
+      timeTravelTree ? undefined : refreshAfterAction,
+    );
   }, [displayTree, vizControls, resourceStatuses, timeTravelTree, refreshAfterAction]);
 
   return (

@@ -4,7 +4,6 @@ import type {
   DeployOutcomeEvent,
   HydrateEvent,
   SetterCallEvent,
-  StateChangeEvent,
   StateMiddleware,
 } from "../state-middleware.js";
 import {

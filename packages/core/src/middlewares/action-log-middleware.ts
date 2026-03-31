@@ -6,8 +6,8 @@
  * events form a snapshot, and the full log captures the history.
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type {
   ActionLogEntry,
   DeployOutcomeEvent,

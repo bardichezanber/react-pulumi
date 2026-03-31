@@ -3,7 +3,7 @@
  * Used by both server (Node.js) and client (browser).
  */
 
-import type { DeployOutcomeEvent, StateChangeEvent, ActionLogEntry } from "./state-middleware.js";
+import type { ActionLogEntry, DeployOutcomeEvent, StateChangeEvent } from "./state-middleware.js";
 
 // ---------------------------------------------------------------------------
 // WebSocket message protocol (server → client)
@@ -33,11 +33,11 @@ export type ServerMessage =
   | { type: "error"; message: string };
 
 export interface VizActionEntry {
-  trigger: string;            // "VizButton:scale-up" or "VizInput:region"
+  trigger: string; // "VizButton:scale-up" or "VizInput:region"
   controlType: "input" | "button";
   timestamp: number;
-  stateBefore: Record<string, unknown>;  // { replicas: 2, region: "us-west-2", ... }
-  stateAfter: Record<string, unknown>;   // { replicas: 3, region: "us-west-2", ... }
+  stateBefore: Record<string, unknown>; // { replicas: 2, region: "us-west-2", ... }
+  stateAfter: Record<string, unknown>; // { replicas: 3, region: "us-west-2", ... }
 }
 
 // ---------------------------------------------------------------------------

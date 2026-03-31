@@ -3,8 +3,8 @@
  * Auto-reconnects on close. Dispatches events to useInfraStore.
  */
 
-import { useEffect, useRef } from "react";
 import type { ServerMessage } from "@react-pulumi/core";
+import { useEffect, useRef } from "react";
 import { useInfraStore } from "./infra-store.js";
 import type { DeploymentStatus } from "./types.js";
 
@@ -94,5 +94,14 @@ export function useWebSocket(): void {
       clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
-  }, [setResourceTree, setDeploymentStatus, updateResourceStatus, setResourceStatuses, appendTimelineEntry, setWsConnected, setWsReplayDone]);
+  }, [
+    setResourceTree,
+    setDeploymentStatus,
+    updateResourceStatus,
+    setResourceStatuses,
+    appendTimelineEntry,
+    setWsConnected,
+    setWsReplayDone,
+    appendAction,
+  ]);
 }

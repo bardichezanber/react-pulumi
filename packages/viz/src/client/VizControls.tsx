@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import type { VizControlDescriptor } from "@react-pulumi/core";
+import { useCallback, useEffect, useState } from "react";
 import { useInfraStore } from "../infra-store.js";
 
 export function VizControls() {
@@ -42,21 +42,39 @@ function VizInputControl({ control }: { control: VizControlDescriptor }) {
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-      <label style={{ color: "#aaa", minWidth: 60 }}>{control.label ?? control.name}</label>
+      <label htmlFor={`viz-control-${control.name}`} style={{ color: "#aaa", minWidth: 60 }}>
+        {control.label ?? control.name}
+      </label>
       <input
+        id={`viz-control-${control.name}`}
         type={control.inputType ?? "text"}
         value={String(localValue)}
         min={control.min}
         max={control.max}
         step={control.step}
-        onChange={(e) => setLocalValue(
-          control.inputType === "number" || control.inputType === "range"
-            ? Number(e.target.value)
-            : e.target.value,
-        )}
-        style={{ width: 80, padding: "2px 4px", background: "#2a2a3e", color: "#eee", border: "1px solid #555", borderRadius: 3 }}
+        onChange={(e) =>
+          setLocalValue(
+            control.inputType === "number" || control.inputType === "range"
+              ? Number(e.target.value)
+              : e.target.value,
+          )
+        }
+        style={{
+          width: 80,
+          padding: "2px 4px",
+          background: "#2a2a3e",
+          color: "#eee",
+          border: "1px solid #555",
+          borderRadius: 3,
+        }}
       />
-      <button onClick={handleApply} style={{ fontSize: 11, padding: "2px 6px", cursor: "pointer" }}>Apply</button>
+      <button
+        type="button"
+        onClick={handleApply}
+        style={{ fontSize: 11, padding: "2px 6px", cursor: "pointer" }}
+      >
+        Apply
+      </button>
     </div>
   );
 }
@@ -75,9 +93,16 @@ function VizButtonControl({ control }: { control: VizControlDescriptor }) {
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       disabled={loading}
-      style={{ display: "block", marginBottom: 4, fontSize: 12, padding: "4px 10px", cursor: "pointer" }}
+      style={{
+        display: "block",
+        marginBottom: 4,
+        fontSize: 12,
+        padding: "4px 10px",
+        cursor: "pointer",
+      }}
     >
       {control.label ?? control.name}
     </button>

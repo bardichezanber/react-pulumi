@@ -7,8 +7,6 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import WebSocket from "ws";
-import { BroadcastMiddleware } from "@react-pulumi/core/middlewares";
 import { startVizServer, type VizServer } from "../server.js";
 
 let testDir: string;
@@ -62,12 +60,23 @@ describe("E2E: viz server REST API", () => {
     // Write a fake action log
     const logDir = join(testDir, ".react-pulumi");
     mkdirSync(logDir, { recursive: true });
-    writeFileSync(join(logDir, "action-log.json"), JSON.stringify({
-      version: 1,
-      events: [
-        { type: "deploy_outcome", deployId: "d1", success: true, timestamp: 1000, stateSnapshot: { keys: ["App:0"], values: [1] }, keyMap: { 0: "App:0" }, seq: 0 },
-      ],
-    }));
+    writeFileSync(
+      join(logDir, "action-log.json"),
+      JSON.stringify({
+        version: 1,
+        events: [
+          {
+            type: "deploy_outcome",
+            deployId: "d1",
+            success: true,
+            timestamp: 1000,
+            stateSnapshot: { keys: ["App:0"], values: [1] },
+            keyMap: { 0: "App:0" },
+            seq: 0,
+          },
+        ],
+      }),
+    );
 
     server = await startVizServer({ port: 0, tree: mockTree, projectDir: testDir });
 
@@ -95,9 +104,7 @@ describe("E2E: viz server REST API", () => {
 
   it("POST /api/viz-controls/:name invokes via onInvoke callback", async () => {
     const onInvokeFn = vi.fn();
-    const initialControls = [
-      { name: "action", controlType: "button" as const, label: "Action" },
-    ];
+    const initialControls = [{ name: "action", controlType: "button" as const, label: "Action" }];
 
     server = await startVizServer({ port: 0, tree: mockTree, initialControls });
     server.onInvoke = onInvokeFn;
@@ -109,9 +116,7 @@ describe("E2E: viz server REST API", () => {
 
   it("POST /api/viz-controls/:name passes value to onInvoke for input controls", async () => {
     const onInvokeFn = vi.fn();
-    const initialControls = [
-      { name: "count", controlType: "input" as const, value: 1 },
-    ];
+    const initialControls = [{ name: "count", controlType: "input" as const, value: 1 }];
 
     server = await startVizServer({ port: 0, tree: mockTree, initialControls });
     server.onInvoke = onInvokeFn;
@@ -139,7 +144,9 @@ describe("E2E: viz server REST API", () => {
     };
     // onRerender simulates CLI re-render returning updated controls
     server.onRerender = async () => ({
-      controls: [{ name: "replicas", controlType: "input", inputType: "number", value: currentReplicas }],
+      controls: [
+        { name: "replicas", controlType: "input", inputType: "number", value: currentReplicas },
+      ],
     });
 
     // First action: replicas 2 → 3
@@ -178,7 +185,9 @@ describe("E2E: viz server REST API", () => {
 
     // Set up a slow handler
     let resolveHandler: () => void;
-    const handlerPromise = new Promise<void>((r) => { resolveHandler = r; });
+    const handlerPromise = new Promise<void>((r) => {
+      resolveHandler = r;
+    });
     server.onDeploy = () => handlerPromise;
 
     // First deploy starts

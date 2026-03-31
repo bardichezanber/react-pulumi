@@ -5,20 +5,23 @@
 
 import { createElement, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { VizButton } from "../components/VizButton.js";
+import { VizInput } from "../components/VizInput.js";
+import { PersistenceMiddleware } from "../middlewares/persistence-middleware.js";
 import { renderToResourceTree } from "../renderer.js";
 import { installInterceptor } from "../state-interceptor.js";
-import { PersistenceMiddleware } from "../middlewares/persistence-middleware.js";
 import { resetMiddlewareState } from "../state-middleware.js";
 import { loadState, resetState } from "../state-store.js";
 import { vizRegistry } from "../viz-registry.js";
-import { VizInput } from "../components/VizInput.js";
-import { VizButton } from "../components/VizButton.js";
 import { pulumiToComponent } from "../wrap.js";
 
 class MockRes {
   name: string;
   args: Record<string, unknown>;
-  constructor(n: string, a: Record<string, unknown>) { this.name = n; this.args = a; }
+  constructor(n: string, a: Record<string, unknown>) {
+    this.name = n;
+    this.args = a;
+  }
 }
 const [Res] = pulumiToComponent(MockRes as never, "test:Res");
 
@@ -35,8 +38,18 @@ describe("VizInput/VizButton synchronous registration", () => {
 
     function App() {
       const [count, setCount] = useState(3);
-      return createElement("div", null,
-        createElement(VizInput, { name: "replicas", label: "Replicas", inputType: "number", value: count, setValue: setCount, min: 1, max: 10 }),
+      return createElement(
+        "div",
+        null,
+        createElement(VizInput, {
+          name: "replicas",
+          label: "Replicas",
+          inputType: "number",
+          value: count,
+          setValue: setCount,
+          min: 1,
+          max: 10,
+        }),
         createElement(Res, { name: "r1" }),
       );
     }
@@ -62,7 +75,9 @@ describe("VizInput/VizButton synchronous registration", () => {
     const handler = () => {};
     function App() {
       const [_n] = useState(1);
-      return createElement("div", null,
+      return createElement(
+        "div",
+        null,
         createElement(VizButton, { name: "scale-up", label: "Scale Up", handler }),
         createElement(Res, { name: "r1" }),
       );
@@ -86,9 +101,21 @@ describe("VizInput/VizButton synchronous registration", () => {
     function App() {
       const [replicas, setReplicas] = useState(2);
       const [region, setRegion] = useState("us-west-2");
-      return createElement("div", null,
-        createElement(VizInput, { name: "replicas", inputType: "number", value: replicas, setValue: setReplicas }),
-        createElement(VizInput, { name: "region", inputType: "text", value: region, setValue: setRegion }),
+      return createElement(
+        "div",
+        null,
+        createElement(VizInput, {
+          name: "replicas",
+          inputType: "number",
+          value: replicas,
+          setValue: setReplicas,
+        }),
+        createElement(VizInput, {
+          name: "region",
+          inputType: "text",
+          value: region,
+          setValue: setRegion,
+        }),
         createElement(VizButton, { name: "reset", label: "Reset", handler: () => {} }),
         createElement(Res, { name: "r1" }),
       );
@@ -99,7 +126,7 @@ describe("VizInput/VizButton synchronous registration", () => {
     cleanup();
 
     expect(vizRegistry.size).toBe(3);
-    const names = vizRegistry.list().map(c => c.name);
+    const names = vizRegistry.list().map((c) => c.name);
     expect(names).toContain("replicas");
     expect(names).toContain("region");
     expect(names).toContain("reset");
@@ -113,8 +140,15 @@ describe("VizInput/VizButton synchronous registration", () => {
     function App() {
       const [count, setCount] = useState(2);
       captured = count;
-      return createElement("div", null,
-        createElement(VizInput, { name: "count", inputType: "number", value: count, setValue: setCount }),
+      return createElement(
+        "div",
+        null,
+        createElement(VizInput, {
+          name: "count",
+          inputType: "number",
+          value: count,
+          setValue: setCount,
+        }),
         createElement(Res, { name: "r1" }),
       );
     }

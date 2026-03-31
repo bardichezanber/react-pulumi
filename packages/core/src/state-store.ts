@@ -19,11 +19,14 @@ interface StateStoreData {
 
 const STATE_KEY = Symbol.for("react-pulumi:stateStore");
 const g = globalThis as unknown as Record<symbol, StateStoreData>;
-const _s: StateStoreData = g[STATE_KEY] ?? (g[STATE_KEY] = {
-  persisted: { keys: [], values: [] },
-  hookCounter: 0,
-  pendingValues: [],
-});
+if (!g[STATE_KEY]) {
+  g[STATE_KEY] = {
+    persisted: { keys: [], values: [] },
+    hookCounter: 0,
+    pendingValues: [],
+  };
+}
+const _s: StateStoreData = g[STATE_KEY];
 
 /**
  * Load previously persisted state (from Pulumi config).

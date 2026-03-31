@@ -11,8 +11,8 @@
  * with that entry's historical state.
  */
 
-import { useCallback, useEffect, useState } from "react";
 import type { VizHistoryEntry } from "@react-pulumi/core";
+import { useCallback, useEffect, useState } from "react";
 import { useInfraStore } from "../infra-store.js";
 
 interface StateDiff {
@@ -61,44 +61,47 @@ export function Timeline() {
   }, []);
 
   // Refresh after WS action_entry events or deploy status changes
-  const actions = useInfraStore((s) => s.actions);
-  const deploymentStatus = useInfraStore((s) => s.deploymentStatus);
+  const _actions = useInfraStore((s) => s.actions);
+  const _deploymentStatus = useInfraStore((s) => s.deploymentStatus);
   useEffect(() => {
     // Refresh when actions change or deploy completes (status returns to idle after deploying)
     fetch("/api/viz-history")
       .then((r) => r.json())
       .then((data: { entries: VizHistoryEntry[] }) => setHistory(data.entries))
       .catch(() => {});
-  }, [actions.length, deploymentStatus]);
+  }, []);
 
-  const handleEntryClick = useCallback(async (entry: VizHistoryEntry) => {
-    // Toggle off if clicking the same entry
-    if (timeTravelEntry?.id === entry.id) {
-      setTimeTravelEntry(null);
-      setTimeTravelTree(null);
-      setTimeTravelCodeChanged(false);
-      return;
-    }
+  const handleEntryClick = useCallback(
+    async (entry: VizHistoryEntry) => {
+      // Toggle off if clicking the same entry
+      if (timeTravelEntry?.id === entry.id) {
+        setTimeTravelEntry(null);
+        setTimeTravelTree(null);
+        setTimeTravelCodeChanged(false);
+        return;
+      }
 
-    // Request time-travel re-render from server
-    try {
-      const res = await fetch("/api/time-travel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stateSnapshot: entry.stateSnapshot,
-          originalTreeHash: entry.treeHash,
-        }),
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setTimeTravelEntry(entry);
-      setTimeTravelTree(data.tree);
-      setTimeTravelCodeChanged(data.codeChanged);
-    } catch {
-      // Non-fatal
-    }
-  }, [timeTravelEntry, setTimeTravelEntry, setTimeTravelTree, setTimeTravelCodeChanged]);
+      // Request time-travel re-render from server
+      try {
+        const res = await fetch("/api/time-travel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stateSnapshot: entry.stateSnapshot,
+            originalTreeHash: entry.treeHash,
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setTimeTravelEntry(entry);
+        setTimeTravelTree(data.tree);
+        setTimeTravelCodeChanged(data.codeChanged);
+      } catch {
+        // Non-fatal
+      }
+    },
+    [timeTravelEntry, setTimeTravelEntry, setTimeTravelTree, setTimeTravelCodeChanged],
+  );
 
   // Newest first
   const reversed = [...history].reverse();
@@ -109,18 +112,38 @@ export function Timeline() {
   );
 
   return (
-    <div style={{ fontFamily: "var(--font-sans)", fontSize: "var(--text-base)", display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{
-        padding: "var(--space-md) var(--space-lg) var(--space-sm)",
-        fontSize: "var(--text-xs)", fontWeight: 600, textTransform: "uppercase" as const,
-        letterSpacing: "0.08em", color: "var(--text-dim)", borderBottom: "1px solid var(--border)",
-      }}>
+    <div
+      style={{
+        fontFamily: "var(--font-sans)",
+        fontSize: "var(--text-base)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
+      <div
+        style={{
+          padding: "var(--space-md) var(--space-lg) var(--space-sm)",
+          fontSize: "var(--text-xs)",
+          fontWeight: 600,
+          textTransform: "uppercase" as const,
+          letterSpacing: "0.08em",
+          color: "var(--text-dim)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         Action / State History
       </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         {reversed.length === 0 && (
-          <div style={{ padding: "var(--space-xl) var(--space-lg)", color: "var(--text-dim)", fontSize: "var(--text-sm)" }}>
+          <div
+            style={{
+              padding: "var(--space-xl) var(--space-lg)",
+              color: "var(--text-dim)",
+              fontSize: "var(--text-sm)",
+            }}
+          >
             No actions yet. Edit a VizInput or click a VizButton to see state changes here.
           </div>
         )}
@@ -158,7 +181,12 @@ export function Timeline() {
   );
 }
 
-function ActionEntry({ entry, isSelected, isPending, onClick }: {
+function ActionEntry({
+  entry,
+  isSelected,
+  isPending,
+  onClick,
+}: {
   entry: VizHistoryEntry;
   isSelected: boolean;
   isPending: boolean;
@@ -167,7 +195,12 @@ function ActionEntry({ entry, isSelected, isPending, onClick }: {
   const diffs = computeDiffs(entry);
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick();
+      }}
       style={{
         padding: "var(--space-sm) var(--space-lg)",
         borderBottom: "1px solid var(--border)",
@@ -176,25 +209,48 @@ function ActionEntry({ entry, isSelected, isPending, onClick }: {
         cursor: "pointer",
         transition: "background 0.15s",
       }}
-      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "var(--surface-raised)"; }}
-      onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = ""; }}
+      onMouseEnter={(e) => {
+        if (!isSelected) e.currentTarget.style.background = "var(--surface-raised)";
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) e.currentTarget.style.background = "";
+      }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "flex", alignItems: "center", gap: 4 }}>
+        <span
+          style={{
+            fontSize: "var(--text-sm)",
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
           <span style={{ color: "var(--accent)" }}>●</span>
           {entry.trigger}
         </span>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--text-xs)",
+            color: "var(--text-dim)",
+          }}
+        >
           {formatTime(entry.timestamp)}
         </span>
       </div>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", marginTop: 3 }}>
         {diffs.map((diff) => (
           <div key={diff.key} style={{ color: diff.changed ? "var(--text)" : "var(--text-dim)" }}>
-            {diff.key}: {diff.changed
-              ? <>{JSON.stringify(diff.before)} <span style={{ color: "var(--accent)" }}>→</span> {JSON.stringify(diff.after)}</>
-              : JSON.stringify(diff.after)
-            }
+            {diff.key}:{" "}
+            {diff.changed ? (
+              <>
+                {JSON.stringify(diff.before)} <span style={{ color: "var(--accent)" }}>→</span>{" "}
+                {JSON.stringify(diff.after)}
+              </>
+            ) : (
+              JSON.stringify(diff.after)
+            )}
           </div>
         ))}
       </div>
@@ -209,28 +265,43 @@ function DeployMarker({ entry }: { entry: VizHistoryEntry }) {
   const label = success ? `deployed (${entry.deployId ?? "?"})` : "failed";
 
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 8,
-      padding: "var(--space-xs) var(--space-lg)",
-      color,
-      fontSize: "var(--text-xs)",
-      fontFamily: "var(--font-mono)",
-    }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "var(--space-xs) var(--space-lg)",
+        color,
+        fontSize: "var(--text-xs)",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
       <div style={{ flex: 1, height: 1, background: color, opacity: 0.4 }} />
-      <span>{icon} {label}</span>
+      <span>
+        {icon} {label}
+      </span>
       <div style={{ flex: 1, height: 1, background: color, opacity: 0.4 }} />
     </div>
   );
 }
 
-function InitialEntry({ entry, isSelected, onClick }: {
+function InitialEntry({
+  entry,
+  isSelected,
+  onClick,
+}: {
   entry: VizHistoryEntry;
   isSelected: boolean;
   onClick: () => void;
 }) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick();
+      }}
       style={{
         padding: "var(--space-sm) var(--space-lg)",
         borderLeft: isSelected ? "2px solid var(--accent)" : "2px solid transparent",
@@ -238,21 +309,49 @@ function InitialEntry({ entry, isSelected, onClick }: {
         cursor: "pointer",
         transition: "background 0.15s",
       }}
-      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "var(--surface-raised)"; }}
-      onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = ""; }}
+      onMouseEnter={(e) => {
+        if (!isSelected) e.currentTarget.style.background = "var(--surface-raised)";
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) e.currentTarget.style.background = "";
+      }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "var(--text-sm)", fontWeight: 500, display: "flex", alignItems: "center", gap: 4, color: "var(--text-muted)" }}>
+        <span
+          style={{
+            fontSize: "var(--text-sm)",
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            color: "var(--text-muted)",
+          }}
+        >
           <span>○</span>
           initial render
         </span>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "var(--text-xs)",
+            color: "var(--text-dim)",
+          }}
+        >
           {formatTime(entry.timestamp)}
         </span>
       </div>
-      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", marginTop: 3, color: "var(--text-dim)" }}>
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-sm)",
+          marginTop: 3,
+          color: "var(--text-dim)",
+        }}
+      >
         {Object.entries(entry.stateSnapshot).map(([key, value]) => (
-          <div key={key}>{key}: {JSON.stringify(value)}</div>
+          <div key={key}>
+            {key}: {JSON.stringify(value)}
+          </div>
         ))}
       </div>
     </div>

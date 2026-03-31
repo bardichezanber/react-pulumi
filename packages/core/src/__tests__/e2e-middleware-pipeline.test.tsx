@@ -75,10 +75,7 @@ let testDir: string;
 let cwdSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  testDir = join(
-    tmpdir(),
-    `react-pulumi-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
+  testDir = join(tmpdir(), `react-pulumi-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
   cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(testDir);
   resetState();
@@ -246,7 +243,9 @@ describe("E2E: middleware pipeline with renderToPulumi", () => {
 
     // Check action log — Run 2's hydrate events should show value=5, defaultValue=2
     const log = readActionLog()!;
-    const allOutcomes = log.events.filter((e) => e.type === "deploy_outcome") as DeployOutcomeEvent[];
+    const allOutcomes = log.events.filter(
+      (e) => e.type === "deploy_outcome",
+    ) as DeployOutcomeEvent[];
     const run2DeployId = allOutcomes[allOutcomes.length - 1].deployId;
 
     const run2Hydrates = log.events.filter(
@@ -270,7 +269,7 @@ describe("E2E: middleware pipeline with renderToPulumi", () => {
     }
 
     function App() {
-      const [count] = useState(1);
+      const [_count] = useState(1);
       return createElement(Child, null);
     }
 

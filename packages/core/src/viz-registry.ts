@@ -74,4 +74,7 @@ class VizRegistryImpl {
 const GLOBAL_KEY = Symbol.for("react-pulumi:vizRegistry");
 const g = globalThis as unknown as Record<symbol, VizRegistryImpl>;
 
-export const vizRegistry: VizRegistryImpl = g[GLOBAL_KEY] ?? (g[GLOBAL_KEY] = new VizRegistryImpl());
+if (!g[GLOBAL_KEY]) {
+  g[GLOBAL_KEY] = new VizRegistryImpl();
+}
+export const vizRegistry: VizRegistryImpl = g[GLOBAL_KEY];

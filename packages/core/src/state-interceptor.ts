@@ -12,10 +12,10 @@
 
 import React from "react";
 import {
-  type StateMiddleware,
   dispatchStateChange,
   getDeployId,
   nextSeq,
+  type StateMiddleware,
 } from "./state-middleware.js";
 import { getNextValue } from "./state-store.js";
 

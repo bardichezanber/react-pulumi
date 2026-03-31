@@ -58,8 +58,10 @@ describe("vizRegistry", () => {
 
   it("list strips handler and setValue from descriptors", () => {
     vizRegistry.register({
-      name: "btn", controlType: "button",
-      label: "Click me", description: "Does stuff",
+      name: "btn",
+      controlType: "button",
+      label: "Click me",
+      description: "Does stuff",
       handler: () => {},
     });
 

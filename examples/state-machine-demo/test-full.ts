@@ -1,5 +1,5 @@
-import { createElement } from "react";
 import { renderToResourceTree, vizRegistry } from "@react-pulumi/core";
+import { createElement } from "react";
 
 // Import and test if the module loads
 const mod = await import("./index.js");

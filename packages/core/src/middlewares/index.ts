@@ -1,3 +1,3 @@
+export { type ActionLog, ActionLogMiddleware } from "./action-log-middleware.js";
+export { type BroadcastFn, BroadcastMiddleware } from "./broadcast-middleware.js";
 export { PersistenceMiddleware } from "./persistence-middleware.js";
-export { ActionLogMiddleware, type ActionLog } from "./action-log-middleware.js";
-export { BroadcastMiddleware, type BroadcastFn } from "./broadcast-middleware.js";

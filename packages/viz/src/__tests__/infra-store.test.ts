@@ -29,7 +29,15 @@ describe("useInfraStore", () => {
   });
 
   it("appendTimelineEntry appends to timeline", () => {
-    const event = { type: "hydrate" as const, index: 0, value: 42, defaultValue: 0, seq: 0, timestamp: Date.now(), deployId: "d1" };
+    const event = {
+      type: "hydrate" as const,
+      index: 0,
+      value: 42,
+      defaultValue: 0,
+      seq: 0,
+      timestamp: Date.now(),
+      deployId: "d1",
+    };
     useInfraStore.getState().appendTimelineEntry(event);
     useInfraStore.getState().appendTimelineEntry({ ...event, seq: 1, value: 99 });
 
@@ -40,7 +48,13 @@ describe("useInfraStore", () => {
 
   it("setDeployHistory replaces history", () => {
     useInfraStore.getState().setDeployHistory([
-      { deployId: "d1", timestamp: 1000, success: true, stateSnapshot: { keys: [], values: [] }, keyMap: {} },
+      {
+        deployId: "d1",
+        timestamp: 1000,
+        success: true,
+        stateSnapshot: { keys: [], values: [] },
+        keyMap: {},
+      },
     ]);
     expect(useInfraStore.getState().deployHistory).toHaveLength(1);
 
@@ -49,9 +63,9 @@ describe("useInfraStore", () => {
   });
 
   it("setVizControls replaces controls", () => {
-    useInfraStore.getState().setVizControls([
-      { name: "replicas", controlType: "input", inputType: "number", value: 2 },
-    ]);
+    useInfraStore
+      .getState()
+      .setVizControls([{ name: "replicas", controlType: "input", inputType: "number", value: 2 }]);
     expect(useInfraStore.getState().vizControls).toHaveLength(1);
     expect(useInfraStore.getState().vizControls[0].name).toBe("replicas");
   });
@@ -77,7 +91,13 @@ describe("useInfraStore", () => {
     useInfraStore.getState().setDeploymentStatus("deploying");
     useInfraStore.getState().setWsConnected(true);
     useInfraStore.getState().appendTimelineEntry({
-      type: "hydrate", index: 0, value: 1, defaultValue: 0, seq: 0, timestamp: Date.now(), deployId: "d1",
+      type: "hydrate",
+      index: 0,
+      value: 1,
+      defaultValue: 0,
+      seq: 0,
+      timestamp: Date.now(),
+      deployId: "d1",
     });
 
     useInfraStore.getState().reset();

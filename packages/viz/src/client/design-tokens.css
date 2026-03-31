@@ -1,5 +1,5 @@
 /* Design tokens from DESIGN.md */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
 
 :root {
   /* Core */
@@ -24,8 +24,8 @@
   --info: #6366f1;
 
   /* Typography */
-  --font-sans: 'Geist', -apple-system, system-ui, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, 'Menlo', monospace;
+  --font-sans: "Geist", -apple-system, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Menlo", monospace;
   --text-xs: 10px;
   --text-sm: 11px;
   --text-base: 13px;
@@ -47,7 +47,11 @@
   --radius-lg: 8px;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
   background: var(--bg);
@@ -59,32 +63,37 @@ body {
 
 /* Override React Flow defaults for dark theme */
 .react-flow__background {
-  background: var(--bg) !important;
+  background: var(--bg);
 }
 .react-flow__minimap {
-  background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-md) !important;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 .react-flow__controls {
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-md) !important;
-  box-shadow: none !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
 }
 .react-flow__controls-button {
-  background: var(--surface) !important;
-  border-color: var(--border) !important;
-  fill: var(--text-muted) !important;
+  background: var(--surface);
+  border-color: var(--border);
+  fill: var(--text-muted);
 }
 .react-flow__controls-button:hover {
-  background: var(--surface-raised) !important;
+  background: var(--surface-raised);
 }
 .react-flow__edge-path {
-  stroke: var(--border) !important;
+  stroke: var(--border);
 }
 
 /* Status dot pulse animation */
 @keyframes statusPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }

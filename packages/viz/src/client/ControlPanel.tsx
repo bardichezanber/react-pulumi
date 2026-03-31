@@ -43,8 +43,14 @@ export function ControlPanel() {
   const handlePreview = useCallback(async () => {
     setError(null);
     const res = await fetch("/api/preview", { method: "POST" });
-    if (res.status === 409) { setError("Operation in progress"); return; }
-    if (!res.ok) { setError(`Preview failed: ${res.statusText}`); return; }
+    if (res.status === 409) {
+      setError("Operation in progress");
+      return;
+    }
+    if (!res.ok) {
+      setError(`Preview failed: ${res.statusText}`);
+      return;
+    }
     try {
       const data = await res.json();
       setDialogResult(data.result ?? {});
@@ -58,8 +64,14 @@ export function ControlPanel() {
   const handleDeploy = useCallback(async () => {
     setError(null);
     const res = await fetch("/api/preview", { method: "POST" });
-    if (res.status === 409) { setError("Operation in progress"); return; }
-    if (!res.ok) { setError(`Preview failed: ${res.statusText}`); return; }
+    if (res.status === 409) {
+      setError("Operation in progress");
+      return;
+    }
+    if (!res.ok) {
+      setError(`Preview failed: ${res.statusText}`);
+      return;
+    }
     try {
       const data = await res.json();
       setDialogResult(data.result ?? {});
@@ -124,44 +136,79 @@ export function ControlPanel() {
   }, [timeTravelEntry, exitTimeTravel]);
 
   return (
-    <div style={{
-      height: 40, padding: "0 var(--space-lg)", borderBottom: "1px solid var(--border)",
-      display: "flex", alignItems: "center", gap: "var(--space-md)", background: "var(--surface)",
-      fontFamily: "var(--font-sans)",
-    }}>
+    <div
+      style={{
+        height: 40,
+        padding: "0 var(--space-lg)",
+        borderBottom: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-md)",
+        background: "var(--surface)",
+        fontFamily: "var(--font-sans)",
+      }}
+    >
       {/* WS indicator */}
-      <div style={{
-        width: 6, height: 6, borderRadius: "50%",
-        background: wsConnected ? "var(--success)" : "var(--error)",
-        boxShadow: wsConnected ? "0 0 6px var(--success)" : "0 0 6px var(--error)",
-      }} />
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+      <div
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: wsConnected ? "var(--success)" : "var(--error)",
+          boxShadow: wsConnected ? "0 0 6px var(--success)" : "0 0 6px var(--error)",
+        }}
+      />
+      <span
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-sm)",
+          color: "var(--text-muted)",
+        }}
+      >
         {wsConnected ? "Connected" : "Reconnecting..."}
       </span>
 
       {/* Deploy button — runs preview first, then shows confirm dialog */}
       <button
+        type="button"
         onClick={handleDeploy}
         disabled={isOperating}
         style={{
-          fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", fontWeight: 600,
-          padding: "4px 12px", borderRadius: "var(--radius-sm)",
-          border: "1px solid var(--accent)", background: "var(--accent)", color: "#000",
-          cursor: isOperating ? "not-allowed" : "pointer", opacity: isOperating ? 0.5 : 1,
+          fontFamily: "var(--font-sans)",
+          fontSize: "var(--text-sm)",
+          fontWeight: 600,
+          padding: "4px 12px",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--accent)",
+          background: "var(--accent)",
+          color: "#000",
+          cursor: isOperating ? "not-allowed" : "pointer",
+          opacity: isOperating ? 0.5 : 1,
         }}
       >
-        {isOperating ? "Deploying..." : pendingCount > 0 ? `Deploy (${pendingCount} ${pendingCount === 1 ? "change" : "changes"})` : "Deploy"}
+        {isOperating
+          ? "Deploying..."
+          : pendingCount > 0
+            ? `Deploy (${pendingCount} ${pendingCount === 1 ? "change" : "changes"})`
+            : "Deploy"}
       </button>
 
       {/* Preview button — preview only, no deploy option */}
       <button
+        type="button"
         onClick={handlePreview}
         disabled={isOperating}
         style={{
-          fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", fontWeight: 500,
-          padding: "4px 12px", borderRadius: "var(--radius-sm)",
-          border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text)",
-          cursor: isOperating ? "not-allowed" : "pointer", opacity: isOperating ? 0.5 : 1,
+          fontFamily: "var(--font-sans)",
+          fontSize: "var(--text-sm)",
+          fontWeight: 500,
+          padding: "4px 12px",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--border)",
+          background: "var(--surface-raised)",
+          color: "var(--text)",
+          cursor: isOperating ? "not-allowed" : "pointer",
+          opacity: isOperating ? 0.5 : 1,
         }}
       >
         Preview
@@ -170,37 +217,61 @@ export function ControlPanel() {
       {/* Time-travel banner */}
       {timeTravelEntry && (
         <>
-          <span style={{
-            fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)",
-            color: "var(--info)", display: "flex", alignItems: "center", gap: 4,
-          }}>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "var(--text-sm)",
+              color: "var(--info)",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
             Previewing state from {new Date(timeTravelEntry.timestamp).toLocaleTimeString()}
           </span>
           {timeTravelCodeChanged && (
-            <span style={{
-              fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)",
-              color: "var(--warning)", display: "flex", alignItems: "center", gap: 4,
-            }}>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+                color: "var(--warning)",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
               ⚠ Code changed — tree may differ from original
             </span>
           )}
           <button
+            type="button"
             onClick={handleRollback}
             style={{
-              fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", fontWeight: 500,
-              padding: "4px 12px", borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--warning)", background: "transparent", color: "var(--warning)",
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-sm)",
+              fontWeight: 500,
+              padding: "4px 12px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--warning)",
+              background: "transparent",
+              color: "var(--warning)",
               cursor: "pointer",
             }}
           >
             Rollback to this
           </button>
           <button
+            type="button"
             onClick={exitTimeTravel}
             style={{
-              fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", fontWeight: 500,
-              padding: "4px 12px", borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text)",
+              fontFamily: "var(--font-sans)",
+              fontSize: "var(--text-sm)",
+              fontWeight: 500,
+              padding: "4px 12px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border)",
+              background: "var(--surface-raised)",
+              color: "var(--text)",
               cursor: "pointer",
             }}
           >
@@ -210,11 +281,15 @@ export function ControlPanel() {
       )}
 
       {/* Status */}
-      <span style={{
-        marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)",
-        color: successFlash ? "var(--success)" : error ? "var(--accent)" : "var(--text-dim)",
-        transition: "color 0.15s",
-      }}>
+      <span
+        style={{
+          marginLeft: "auto",
+          fontFamily: "var(--font-mono)",
+          fontSize: "var(--text-sm)",
+          color: successFlash ? "var(--success)" : error ? "var(--accent)" : "var(--text-dim)",
+          transition: "color 0.15s",
+        }}
+      >
         {successFlash ? "Deployed ✓" : error ? error : `status: ${status}`}
       </span>
 

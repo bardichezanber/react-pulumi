@@ -14,11 +14,11 @@ import "./design-tokens.css";
 import type { ResourceNode } from "@react-pulumi/core";
 import { useEffect } from "react";
 import { useInfraStore } from "../infra-store.js";
-import { useWebSocket } from "../ws-client.js";
+import type { DeploymentStatus } from "../types.js";
 import { ResourceGraph } from "../web-renderer.js";
+import { useWebSocket } from "../ws-client.js";
 import { ControlPanel } from "./ControlPanel.js";
 import { Timeline } from "./Timeline.js";
-import type { DeploymentStatus } from "../types.js";
 
 export function App() {
   useWebSocket();
@@ -59,10 +59,18 @@ export function App() {
 
   if (!resourceTree) {
     return (
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        height: "100vh", fontFamily: "var(--font-mono)", color: "var(--text-muted)", gap: 8,
-      }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          fontFamily: "var(--font-mono)",
+          color: "var(--text-muted)",
+          gap: 8,
+        }}
+      >
         <div style={{ fontSize: "var(--text-lg)" }}>Waiting for resource tree...</div>
         <div style={{ fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>
           Run <code style={{ color: "var(--accent)" }}>react-pulumi viz</code> with a TSX file
@@ -72,7 +80,14 @@ export function App() {
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateRows: "40px 1fr 32px", gridTemplateColumns: "1fr 340px", height: "100vh" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateRows: "40px 1fr 32px",
+        gridTemplateColumns: "1fr 340px",
+        height: "100vh",
+      }}
+    >
       {/* ControlPanel — spans full width */}
       <div style={{ gridColumn: "1 / -1" }}>
         <ControlPanel />
@@ -84,23 +99,44 @@ export function App() {
       </div>
 
       {/* Right panel — Timeline */}
-      <div style={{ borderLeft: "1px solid var(--border)", background: "var(--surface)", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+      <div
+        style={{
+          borderLeft: "1px solid var(--border)",
+          background: "var(--surface)",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <Timeline />
       </div>
 
       {/* Legend bar — spans full width */}
-      <div style={{
-        gridColumn: "1 / -1", padding: "0 var(--space-lg)",
-        borderTop: "1px solid var(--border)", background: "var(--surface)",
-        display: "flex", alignItems: "center", gap: "var(--space-lg)",
-        fontSize: "var(--text-sm)", color: "var(--text-dim)",
-        fontFamily: "var(--font-sans)",
-      }}>
+      <div
+        style={{
+          gridColumn: "1 / -1",
+          padding: "0 var(--space-lg)",
+          borderTop: "1px solid var(--border)",
+          background: "var(--surface)",
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--space-lg)",
+          fontSize: "var(--text-sm)",
+          color: "var(--text-dim)",
+          fontFamily: "var(--font-sans)",
+        }}
+      >
         <LegendItem border="1px solid var(--border)" bg="var(--surface)" label="Resource" />
-        <LegendItem border="1px dashed var(--accent)" bg="rgba(14,165,233,0.04)" label="Component" />
+        <LegendItem
+          border="1px dashed var(--accent)"
+          bg="rgba(14,165,233,0.04)"
+          label="Component"
+        />
         <LegendItem border="1px solid var(--accent)" bg="var(--accent-muted)" label="Input" />
         <LegendItem border="1px dashed var(--border)" bg="var(--surface)" label="Button" />
-        <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)" }}>
+        <span
+          style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)" }}
+        >
           react-pulumi viz
         </span>
       </div>

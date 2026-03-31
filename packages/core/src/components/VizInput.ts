@@ -23,7 +23,16 @@ export interface VizInputProps {
   step?: number;
 }
 
-export function VizInput({ name, label, inputType, value, setValue, min, max, step }: VizInputProps): null {
+export function VizInput({
+  name,
+  label,
+  inputType,
+  value,
+  setValue,
+  min,
+  max,
+  step,
+}: VizInputProps): null {
   // Register synchronously during render — useEffect doesn't fire in server-side reconciler
   vizRegistry.register({
     name,

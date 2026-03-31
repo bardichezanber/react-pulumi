@@ -10,18 +10,17 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createElement, useCallback, useState } from "react";
+import { createElement, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VizButton } from "../components/VizButton.js";
+import { VizInput } from "../components/VizInput.js";
 import type { ActionLog } from "../middlewares/action-log-middleware.js";
 import { BroadcastMiddleware } from "../middlewares/broadcast-middleware.js";
 import { setPulumiSDK } from "../pulumi-bridge.js";
 import { renderToPulumi } from "../render-to-pulumi.js";
-import type { DeployOutcomeEvent, HydrateEvent } from "../state-middleware.js";
 import { resetState } from "../state-store.js";
 import { vizRegistry } from "../viz-registry.js";
 import { pulumiToComponent } from "../wrap.js";
-import { VizInput } from "../components/VizInput.js";
-import { VizButton } from "../components/VizButton.js";
 
 // ── Mock resources ──
 
@@ -42,8 +41,22 @@ const [Bucket] = pulumiToComponent(MockBucket as never, "aws:s3:Bucket");
 function createMockPulumiSDK(configStore: Record<string, string> = {}) {
   const dynamicResources: Array<{ name: string; inputs: Record<string, unknown> }> = [];
   return {
-    Config: class { private ns: string; constructor(ns: string) { this.ns = ns; } get(key: string) { return configStore[`${this.ns}:${key}`]; } },
-    dynamic: { Resource: class { constructor(_p: unknown, name: string, inputs: Record<string, unknown>) { dynamicResources.push({ name, inputs }); } } },
+    Config: class {
+      private ns: string;
+      constructor(ns: string) {
+        this.ns = ns;
+      }
+      get(key: string) {
+        return configStore[`${this.ns}:${key}`];
+      }
+    },
+    dynamic: {
+      Resource: class {
+        constructor(_p: unknown, name: string, inputs: Record<string, unknown>) {
+          dynamicResources.push({ name, inputs });
+        }
+      },
+    },
     _dynamicResources: dynamicResources,
     _configStore: configStore,
   };
@@ -55,7 +68,10 @@ let testDir: string;
 let cwdSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `react-pulumi-broadcast-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(
+    tmpdir(),
+    `react-pulumi-broadcast-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   mkdirSync(testDir, { recursive: true });
   cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(testDir);
   resetState();
@@ -131,7 +147,10 @@ describe("E2E: BroadcastMiddleware with renderToPulumi", () => {
     // Run 1
     const sdk1 = createMockPulumiSDK(configStore);
     setPulumiSDK(sdk1);
-    function App1() { const [c] = useState(1); return createElement(Bucket, { name: `b-${c}` }); }
+    function App1() {
+      const [c] = useState(1);
+      return createElement(Bucket, { name: `b-${c}` });
+    }
     renderToPulumi(App1, { extraMiddlewares: [broadcast] })();
     configStore["react-pulumi:state"] = sdk1._dynamicResources[0].inputs.state as string;
 
@@ -140,7 +159,10 @@ describe("E2E: BroadcastMiddleware with renderToPulumi", () => {
     // Run 2
     const sdk2 = createMockPulumiSDK(configStore);
     setPulumiSDK(sdk2);
-    function App2() { const [c] = useState(1); return createElement(Bucket, { name: `b-${c}` }); }
+    function App2() {
+      const [c] = useState(1);
+      return createElement(Bucket, { name: `b-${c}` });
+    }
     renderToPulumi(App2, { extraMiddlewares: [broadcast] })();
 
     // Buffer grew
@@ -155,7 +177,9 @@ describe("E2E: BroadcastMiddleware with renderToPulumi", () => {
     const sdk = createMockPulumiSDK();
     setPulumiSDK(sdk);
 
-    const throwBroadcast = new BroadcastMiddleware(() => { throw new Error("ws closed"); });
+    const throwBroadcast = new BroadcastMiddleware(() => {
+      throw new Error("ws closed");
+    });
 
     function App() {
       const [count] = useState(5);
@@ -211,8 +235,18 @@ describe("E2E: VizInput/VizButton registration during renderToPulumi", () => {
 
     function App() {
       const [replicas, setReplicas] = useState(2);
-      return createElement("div", null,
-        createElement(VizInput, { name: "replicas", label: "Replicas", inputType: "number", value: replicas, setValue: setReplicas, min: 1, max: 10 }),
+      return createElement(
+        "div",
+        null,
+        createElement(VizInput, {
+          name: "replicas",
+          label: "Replicas",
+          inputType: "number",
+          value: replicas,
+          setValue: setReplicas,
+          min: 1,
+          max: 10,
+        }),
         createElement(Bucket, { name: `bucket-${replicas}` }),
       );
     }
@@ -236,7 +270,9 @@ describe("E2E: VizInput/VizButton registration during renderToPulumi", () => {
     const handler = vi.fn();
     function App() {
       const [count] = useState(1);
-      return createElement("div", null,
+      return createElement(
+        "div",
+        null,
         createElement(VizButton, { name: "scale-up", label: "Scale Up", handler }),
         createElement(Bucket, { name: `bucket-${count}` }),
       );
@@ -258,7 +294,9 @@ describe("E2E: VizInput/VizButton registration during renderToPulumi", () => {
     const handler = vi.fn();
     function App() {
       const [count] = useState(1);
-      return createElement("div", null,
+      return createElement(
+        "div",
+        null,
         createElement(VizButton, { name: "action", label: "Do It", handler }),
         createElement(Bucket, { name: `bucket-${count}` }),
       );
@@ -280,8 +318,15 @@ describe("E2E: VizInput/VizButton registration during renderToPulumi", () => {
 
     function App() {
       const [replicas, setReplicas] = useState(3);
-      return createElement("div", null,
-        createElement(VizInput, { name: "replicas", inputType: "number", value: replicas, setValue: setReplicas }),
+      return createElement(
+        "div",
+        null,
+        createElement(VizInput, {
+          name: "replicas",
+          inputType: "number",
+          value: replicas,
+          setValue: setReplicas,
+        }),
         createElement(VizButton, { name: "reset", label: "Reset", handler }),
         ...Array.from({ length: replicas }, (_, i) =>
           createElement(Bucket, { key: i, name: `bucket-${i}` }),

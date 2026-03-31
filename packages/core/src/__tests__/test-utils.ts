@@ -3,11 +3,7 @@
  * Used across multiple test files to avoid DRY violations.
  */
 
-import type {
-  DeployOutcomeEvent,
-  HydrateEvent,
-  SetterCallEvent,
-} from "../state-middleware.js";
+import type { DeployOutcomeEvent, HydrateEvent, SetterCallEvent } from "../state-middleware.js";
 
 export function makeHydrateEvent(
   index: number,

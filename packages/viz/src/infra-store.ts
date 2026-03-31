@@ -4,7 +4,14 @@
  * Zustand devtools middleware sends every state change to Redux DevTools.
  */
 
-import type { ResourceNode, VizControlDescriptor, ActionLogEntry, DeployHistoryEntry, VizActionEntry, VizHistoryEntry } from "@react-pulumi/core";
+import type {
+  ActionLogEntry,
+  DeployHistoryEntry,
+  ResourceNode,
+  VizActionEntry,
+  VizControlDescriptor,
+  VizHistoryEntry,
+} from "@react-pulumi/core";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { DeploymentStatus, ResourceStatus, ResourceStatusEntry } from "./types.js";
@@ -69,7 +76,8 @@ export const useInfraStore = create<InfraState>()(
       timeTravelCodeChanged: false,
 
       setResourceTree: (tree) => set({ resourceTree: tree }, false, "setResourceTree"),
-      setDeploymentStatus: (status) => set({ deploymentStatus: status }, false, "setDeploymentStatus"),
+      setDeploymentStatus: (status) =>
+        set({ deploymentStatus: status }, false, "setDeploymentStatus"),
       updateResourceStatus: (key, status, error) =>
         set(
           (state) => ({
@@ -78,7 +86,8 @@ export const useInfraStore = create<InfraState>()(
           false,
           "updateResourceStatus",
         ),
-      setResourceStatuses: (statuses) => set({ resourceStatuses: statuses }, false, "setResourceStatuses"),
+      setResourceStatuses: (statuses) =>
+        set({ resourceStatuses: statuses }, false, "setResourceStatuses"),
       appendTimelineEntry: (entry) =>
         set((state) => ({ timeline: [...state.timeline, entry] }), false, "appendTimelineEntry"),
       appendAction: (entry) =>
@@ -90,7 +99,8 @@ export const useInfraStore = create<InfraState>()(
       setWsReplayDone: (done) => set({ wsReplayDone: done }, false, "setWsReplayDone"),
       setTimeTravelEntry: (entry) => set({ timeTravelEntry: entry }, false, "setTimeTravelEntry"),
       setTimeTravelTree: (tree) => set({ timeTravelTree: tree }, false, "setTimeTravelTree"),
-      setTimeTravelCodeChanged: (changed) => set({ timeTravelCodeChanged: changed }, false, "setTimeTravelCodeChanged"),
+      setTimeTravelCodeChanged: (changed) =>
+        set({ timeTravelCodeChanged: changed }, false, "setTimeTravelCodeChanged"),
       reset: () =>
         set(
           {

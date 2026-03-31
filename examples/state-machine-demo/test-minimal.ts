@@ -1,5 +1,5 @@
+import { pulumiToComponent, renderToResourceTree, VizInput, vizRegistry } from "@react-pulumi/core";
 import { createElement, useState } from "react";
-import { renderToResourceTree, pulumiToComponent, vizRegistry, VizInput } from "@react-pulumi/core";
 
 class MockVpc {
   static __pulumiType = "aws:ec2/vpc:Vpc";
@@ -18,7 +18,12 @@ const [Vpc] = pulumiToComponent(MockVpc as never);
 function App1() {
   const [count, setCount] = useState(2);
   console.log("[DEBUG] App1 rendered");
-  return createElement(VizInput, { name: "count", inputType: "number", value: count, setValue: setCount } as any);
+  return createElement(VizInput, {
+    name: "count",
+    inputType: "number",
+    value: count,
+    setValue: setCount,
+  } as any);
 }
 
 vizRegistry.reset();
@@ -30,8 +35,15 @@ vizRegistry.reset();
 function App2() {
   const [count, setCount] = useState(2);
   console.log("[DEBUG] App2 rendered");
-  return createElement(Vpc, { name: "test-vpc" },
-    createElement(VizInput, { name: "count2", inputType: "number", value: count, setValue: setCount } as any),
+  return createElement(
+    Vpc,
+    { name: "test-vpc" },
+    createElement(VizInput, {
+      name: "count2",
+      inputType: "number",
+      value: count,
+      setValue: setCount,
+    } as any),
   );
 }
 
@@ -43,8 +55,15 @@ vizRegistry.reset();
 function App3() {
   const [count, setCount] = useState(2);
   console.log("[DEBUG] App3 rendered");
-  return createElement("div", null,
-    createElement(VizInput, { name: "count3", inputType: "number", value: count, setValue: setCount } as any),
+  return createElement(
+    "div",
+    null,
+    createElement(VizInput, {
+      name: "count3",
+      inputType: "number",
+      value: count,
+      setValue: setCount,
+    } as any),
   );
 }
 

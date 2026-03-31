@@ -93,7 +93,7 @@ const SubnetClass = makeTrackedClass("oci:core:Subnet", { id: "subnet-001" });
 const InstanceClass = makeTrackedClass("oci:core:Instance", { id: "inst-001" });
 
 const [Vcn, VcnCtx] = pulumiToComponent(VcnClass as never);
-const [Subnet, SubnetCtx] = pulumiToComponent(SubnetClass as never);
+const [Subnet, _SubnetCtx] = pulumiToComponent(SubnetClass as never);
 const [Instance] = pulumiToComponent(InstanceClass as never);
 
 // ── Test helpers ──
@@ -132,7 +132,11 @@ describe("E2E: Context wiring + middleware pipeline", () => {
 
     function SubnetLayer() {
       const vcn = useContext(VcnCtx);
-      return createElement(Subnet, { name: "pub", vcnId: (vcn as any).id, cidrBlock: "10.0.0.0/20" });
+      return createElement(Subnet, {
+        name: "pub",
+        vcnId: (vcn as any).id,
+        cidrBlock: "10.0.0.0/20",
+      });
     }
 
     function App() {
@@ -259,16 +263,12 @@ describe("E2E: Context wiring + middleware pipeline", () => {
 
     function App() {
       const [region] = useState("us-east-1");
-      return createElement(
-        Vcn,
-        { name: "main", cidrBlock: "10.0.0.0/16", region },
-        (vcn: any) =>
-          createElement(
-            Subnet,
-            { name: "pub", vcnId: vcn.id, cidrBlock: "10.0.0.0/20" },
-            (subnet: any) =>
-              createElement(Instance, { name: "web-0", subnetId: subnet.id }),
-          ),
+      return createElement(Vcn, { name: "main", cidrBlock: "10.0.0.0/16", region }, (vcn: any) =>
+        createElement(
+          Subnet,
+          { name: "pub", vcnId: vcn.id, cidrBlock: "10.0.0.0/20" },
+          (subnet: any) => createElement(Instance, { name: "web-0", subnetId: subnet.id }),
+        ),
       );
     }
 
@@ -300,13 +300,9 @@ describe("E2E: Context wiring + middleware pipeline", () => {
     }
 
     function App() {
-      const [replicas] = useState(3);
+      const [_replicas] = useState(3);
       const [cidr] = useState("10.0.0.0/16");
-      return createElement(
-        Vcn,
-        { name: "main", cidrBlock: cidr },
-        createElement(InfraConfig),
-      );
+      return createElement(Vcn, { name: "main", cidrBlock: cidr }, createElement(InfraConfig));
     }
 
     renderToPulumi(App)();
@@ -345,9 +341,7 @@ describe("E2E: Context wiring + middleware pipeline", () => {
       return createElement(
         Vcn,
         { name: "main", cidrBlock: "10.0.0.0/16" },
-        enabled
-          ? createElement(Instance, { name: "web-0", vcnId: "vcn-001" })
-          : null,
+        enabled ? createElement(Instance, { name: "web-0", vcnId: "vcn-001" }) : null,
       );
     }
 
@@ -372,9 +366,7 @@ describe("E2E: Context wiring + middleware pipeline", () => {
       return createElement(
         Vcn,
         { name: "main", cidrBlock: "10.0.0.0/16" },
-        enabled
-          ? createElement(Instance, { name: "web-0", vcnId: "vcn-001" })
-          : null,
+        enabled ? createElement(Instance, { name: "web-0", vcnId: "vcn-001" }) : null,
       );
     }
 

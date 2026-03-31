@@ -4,10 +4,10 @@
  */
 
 import { createServer, type Server as HttpServer } from "node:http";
+import type { DeployOutcomeEvent, HydrateEvent } from "@react-pulumi/core";
+import { BroadcastMiddleware } from "@react-pulumi/core/middlewares";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";
-import { BroadcastMiddleware } from "@react-pulumi/core/middlewares";
-import type { HydrateEvent, DeployOutcomeEvent } from "@react-pulumi/core";
 import { createWsServer, type WsBroadcaster } from "../ws-server.js";
 
 let httpServer: HttpServer;
@@ -15,11 +15,27 @@ let wsBroadcaster: WsBroadcaster;
 let port: number;
 
 function makeHydrate(index: number, value: unknown): HydrateEvent {
-  return { type: "hydrate", index, value, defaultValue: 0, seq: index, timestamp: Date.now(), deployId: "test" };
+  return {
+    type: "hydrate",
+    index,
+    value,
+    defaultValue: 0,
+    seq: index,
+    timestamp: Date.now(),
+    deployId: "test",
+  };
 }
 
 function makeOutcome(): DeployOutcomeEvent {
-  return { type: "deploy_outcome", deployId: "test", success: true, stateSnapshot: { keys: ["App:0"], values: [1] }, keyMap: { 0: "App:0" }, seq: 99, timestamp: Date.now() };
+  return {
+    type: "deploy_outcome",
+    deployId: "test",
+    success: true,
+    stateSnapshot: { keys: ["App:0"], values: [1] },
+    keyMap: { 0: "App:0" },
+    seq: 99,
+    timestamp: Date.now(),
+  };
 }
 
 /** Connect a WS client and collect all messages until a condition is met */
@@ -27,7 +43,10 @@ function collectMessages(count: number, timeoutMs = 3000): Promise<string[]> {
   return new Promise((resolve) => {
     const messages: string[] = [];
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
-    const timer = setTimeout(() => { ws.close(); resolve(messages); }, timeoutMs);
+    const timer = setTimeout(() => {
+      ws.close();
+      resolve(messages);
+    }, timeoutMs);
 
     ws.on("message", (data) => {
       messages.push(data.toString());
@@ -38,7 +57,10 @@ function collectMessages(count: number, timeoutMs = 3000): Promise<string[]> {
       }
     });
 
-    ws.on("error", () => { clearTimeout(timer); resolve(messages); });
+    ws.on("error", () => {
+      clearTimeout(timer);
+      resolve(messages);
+    });
   });
 }
 

@@ -82,10 +82,7 @@ export function resetMiddlewareState(deployId: string): void {
 // Dispatch helpers (error-resilient — one middleware failing won't break others)
 // ---------------------------------------------------------------------------
 
-export function dispatchStateChange(
-  middlewares: StateMiddleware[],
-  event: StateChangeEvent,
-): void {
+export function dispatchStateChange(middlewares: StateMiddleware[], event: StateChangeEvent): void {
   for (const mw of middlewares) {
     try {
       mw.onStateChange(event);

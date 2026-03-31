@@ -4,9 +4,9 @@
  */
 
 import type { Server as HttpServer } from "node:http";
-import { WebSocketServer, type WebSocket } from "ws";
-import type { BroadcastMiddleware } from "@react-pulumi/core/middlewares";
 import type { ServerMessage } from "@react-pulumi/core";
+import type { BroadcastMiddleware } from "@react-pulumi/core/middlewares";
+import { type WebSocket, WebSocketServer } from "ws";
 
 export interface WsServerOptions {
   httpServer: HttpServer;

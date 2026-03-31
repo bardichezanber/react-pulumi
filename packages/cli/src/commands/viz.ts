@@ -23,10 +23,17 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
   }
 
   const {
-    renderToResourceTree, collectHookKeys, vizRegistry,
-    installInterceptor, loadState, prepareForRerender, resetMiddlewareState,
+    renderToResourceTree,
+    collectHookKeys,
+    vizRegistry,
+    installInterceptor,
+    loadState,
+    prepareForRerender,
+    resetMiddlewareState,
   } = await import("@react-pulumi/core");
-  const { PersistenceMiddleware, BroadcastMiddleware } = await import("@react-pulumi/core/middlewares");
+  const { PersistenceMiddleware, BroadcastMiddleware } = await import(
+    "@react-pulumi/core/middlewares"
+  );
   const { startVizServer, VizHistoryStore, computeTreeHash } = await import("@react-pulumi/viz");
 
   // ── Middleware pipeline (long-lived, shared across re-renders) ──

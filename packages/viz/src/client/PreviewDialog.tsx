@@ -64,6 +64,7 @@ export function PreviewDialog({ result, mode, onClose, onDeploy }: PreviewDialog
 
   return (
     <div
+      role="presentation"
       onClick={handleBackdropClick}
       style={{
         position: "fixed",
@@ -98,15 +99,18 @@ export function PreviewDialog({ result, mode, onClose, onDeploy }: PreviewDialog
             justifyContent: "space-between",
           }}
         >
-          <span style={{
-            fontSize: "var(--text-base)",
-            fontWeight: 600,
-            color: mode === "deploy-result" ? "var(--success)" : "var(--text)",
-          }}>
+          <span
+            style={{
+              fontSize: "var(--text-base)",
+              fontWeight: 600,
+              color: mode === "deploy-result" ? "var(--success)" : "var(--text)",
+            }}
+          >
             {titles[mode]}
           </span>
           {mode !== "deploying" && (
             <button
+              type="button"
               onClick={onClose}
               style={{
                 background: "none",
@@ -125,12 +129,14 @@ export function PreviewDialog({ result, mode, onClose, onDeploy }: PreviewDialog
 
         {/* Deploying state */}
         {mode === "deploying" && (
-          <div style={{
-            padding: "32px 16px",
-            textAlign: "center",
-            color: "var(--text-muted)",
-            fontSize: "var(--text-sm)",
-          }}>
+          <div
+            style={{
+              padding: "32px 16px",
+              textAlign: "center",
+              color: "var(--text-muted)",
+              fontSize: "var(--text-sm)",
+            }}
+          >
             Running pulumi up...
           </div>
         )}
@@ -235,6 +241,7 @@ export function PreviewDialog({ result, mode, onClose, onDeploy }: PreviewDialog
             }}
           >
             <button
+              type="button"
               onClick={onClose}
               style={{
                 fontFamily: "var(--font-sans)",
@@ -252,6 +259,7 @@ export function PreviewDialog({ result, mode, onClose, onDeploy }: PreviewDialog
             </button>
             {onDeploy && mode === "deploy-confirm" && hasChanges && (
               <button
+                type="button"
                 onClick={onDeploy}
                 style={{
                   fontFamily: "var(--font-sans)",
