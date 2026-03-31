@@ -110,7 +110,15 @@ export function pulumiToComponent<T extends PulumiResourceConstructor>(
   function ResourceComponent(props: ResourceProps<T>) {
     const { name, children, opts, ...args } = props;
     const resourceName = (name as string) ?? token;
-    const instance = new ResourceClass(resourceName, args, opts ?? {}) as InstanceType<T>;
+
+    let instance: InstanceType<T>;
+    try {
+      instance = new ResourceClass(resourceName, args, opts ?? {}) as InstanceType<T>;
+    } catch {
+      // Outside a Pulumi program (e.g. viz mode), resource constructors throw.
+      // Return a stub so the component tree still renders for visualization.
+      instance = { __pulumiType: token, name: resourceName, args } as InstanceType<T>;
+    }
 
     const content =
       typeof children === "function"
