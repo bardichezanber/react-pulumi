@@ -304,7 +304,10 @@ function treeToNodesAndEdges(
       baseData.label = shortName;
 
       // Attach resource status for the status dot indicator
-      const statusKey = `${typeToken}::${node.name ?? ""}`;
+      // For __component__ nodes: typeToken is the Pulumi type token, meta.resourceName is the JSX name prop
+      // For host resource nodes: node.type is the type token, node.name is the logical name
+      const resourceName = (node.meta as any)?.resourceName ?? node.name ?? "";
+      const statusKey = `${typeToken}::${resourceName}`;
       const statusEntry = resourceStatuses[statusKey];
       if (statusEntry) {
         baseData.resourceStatus = statusEntry.status;

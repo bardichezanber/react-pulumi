@@ -69,6 +69,12 @@ function buildTreeFromFiber(fiberRoot: FiberRoot): ResourceNode {
         const name = fnType?.displayName ?? fnType?.name;
         if (name) {
           const compNode = createComponentNode(name);
+          // Store the resource logical name from JSX props for status mapping
+          const fiberProps = (fiber as unknown as { memoizedProps?: Record<string, unknown> })
+            .memoizedProps;
+          if (fiberProps?.name) {
+            compNode.meta.resourceName = fiberProps.name as string;
+          }
           compNode.parent = parent;
           parent.children.push(compNode);
           target = compNode;

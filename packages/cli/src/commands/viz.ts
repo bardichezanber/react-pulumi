@@ -185,6 +185,37 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     return { controls: vizRegistry.list() };
   };
 
+  // Rollback: inject historical state via controls, then deploy
+  server.onRollback = async (targetState: { keys: string[]; values: unknown[] }) => {
+    // Apply each state value to its corresponding viz control
+    for (let i = 0; i < targetState.keys.length; i++) {
+      const name = targetState.keys[i];
+      const value = targetState.values[i];
+      await vizRegistry.invoke(name, value);
+    }
+    tree = renderApp();
+    server.updateTree(tree);
+
+    // Deploy with the rolled-back state
+    const { stack, stackName } = await createStack();
+    console.log(`[react-pulumi] Rolling back stack '${stackName}'...`);
+
+    const resourceChanges: Array<{ op: string; type: string; name: string }> = [];
+    const result = await stack.up({
+      onOutput: (out: string) => parseOutputLine(out, resourceChanges),
+    });
+
+    try {
+      const postDeployStatuses = await loadResourceStatuses();
+      server.updateResourceStatuses(postDeployStatuses);
+    } catch {
+      // Non-fatal
+    }
+
+    prepareForRerender();
+    return result;
+  };
+
   // Time-travel: re-render with historical state, then restore live state
   server.onTimeTravel = async (stateSnapshot: Record<string, unknown>) => {
     // Save current live state
