@@ -1,6 +1,6 @@
 /**
  * Module-level registry for VizInput/VizButton controls.
- * Analogous to actionRegistry — components register on mount, unregister on unmount.
+ * Components register synchronously during render.
  * The viz server reads this registry to serve GET /api/viz-controls.
  */
 

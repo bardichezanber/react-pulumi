@@ -6,6 +6,7 @@
  *   Component — dashed accent border, wrapper for children
  *   VizInput  — accent border, inline editable input
  *   VizButton — dashed border, clickable action trigger
+ *   Ghost     — 40% opacity, dashed error border, strikethrough name (pending deletion)
  */
 
 import {
@@ -77,6 +78,31 @@ function ResourceNodeComponent({ data }: NodeProps) {
         {d.label}
       </div>
       <Handle type="source" position={Position.Bottom} style={{ background: "var(--border)" }} />
+    </div>
+  );
+}
+
+function GhostNodeComponent({ data }: NodeProps) {
+  const d = data as any;
+  return (
+    <div style={{
+      position: "relative",
+      background: "var(--surface)", border: "1px dashed var(--error)", borderRadius: "var(--radius-md)",
+      padding: "6px 12px", minWidth: 200, fontFamily: "var(--font-sans)",
+      opacity: 0.4, pointerEvents: "none",
+    }}>
+      <Handle type="target" position={Position.Top} style={{ background: "var(--error)" }} />
+      <StatusDot status="deleted" />
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
+        {d.typeToken}
+      </div>
+      <div style={{
+        fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text-dim)",
+        textDecoration: "line-through",
+      }}>
+        {d.label}
+      </div>
+      <Handle type="source" position={Position.Bottom} style={{ background: "var(--error)" }} />
     </div>
   );
 }
@@ -197,6 +223,7 @@ const nodeTypes = {
   component: ComponentNodeComponent,
   vizInput: VizInputNodeComponent,
   vizButton: VizButtonNodeComponent,
+  ghost: GhostNodeComponent,
 };
 
 // ── Tree → React Flow conversion ──
@@ -235,6 +262,9 @@ function treeToNodesAndEdges(
   let yOffset = 0;
   const idMap = new WeakMap<ResourceNode, string>();
   let counter = 0;
+
+  // Track which status keys are present in the live tree
+  const liveStatusKeys = new Set<string>();
 
   // Sequential matching: VizInput/VizButton nodes appear in render order
   const inputs = vizControls.filter((c) => c.controlType === "input");
@@ -297,17 +327,16 @@ function treeToNodesAndEdges(
           .then(() => { setTimeout(() => onAction?.(), 200); });
       };
     } else {
-      // For __component__ nodes: name IS the type token (e.g., "aws:ec2/vpc:Vpc")
-      // Extract short name from type token: "aws:ec2/vpc:Vpc" → "Vpc"
-      const shortName = typeToken.includes(":") ? typeToken.split(":").pop() ?? typeToken : typeToken;
+      // For __component__ nodes: node.name IS the type token (e.g., "aws:ec2/vpc:Vpc")
+      // meta.resourceName is the JSX name prop (e.g., "main")
+      // For host resource nodes: node.type is the type token, node.name is the logical name
+      const resourceName = (node.meta as any)?.resourceName ?? "";
       baseData.typeToken = typeToken;
-      baseData.label = shortName;
+      baseData.label = resourceName || (typeToken.includes(":") ? typeToken.split(":").pop() ?? typeToken : typeToken);
 
       // Attach resource status for the status dot indicator
-      // For __component__ nodes: typeToken is the Pulumi type token, meta.resourceName is the JSX name prop
-      // For host resource nodes: node.type is the type token, node.name is the logical name
-      const resourceName = (node.meta as any)?.resourceName ?? node.name ?? "";
-      const statusKey = `${typeToken}::${resourceName}`;
+      const statusKey = `${typeToken}::${resourceName || node.name || ""}`;
+      liveStatusKeys.add(statusKey);
       const statusEntry = resourceStatuses[statusKey];
       if (statusEntry) {
         baseData.resourceStatus = statusEntry.status;
@@ -339,6 +368,32 @@ function treeToNodesAndEdges(
   }
 
   walk(root, 0);
+
+  // ── Ghost nodes: deployed resources no longer in the tree ──
+  for (const [statusKey, entry] of Object.entries(resourceStatuses)) {
+    if (liveStatusKeys.has(statusKey)) continue;
+    // Skip non-resource entries (e.g., pulumi:pulumi:Stack, providers)
+    if (statusKey.includes("pulumi:pulumi:") || statusKey.includes("pulumi:providers:")) continue;
+
+    // Parse type::name from the status key
+    const sepIdx = statusKey.indexOf("::");
+    if (sepIdx === -1) continue;
+    const ghostType = statusKey.slice(0, sepIdx);
+    const ghostName = statusKey.slice(sepIdx + 2);
+
+    const ghostId = `ghost::${statusKey}::${counter++}`;
+    nodes.push({
+      id: ghostId,
+      type: "ghost",
+      position: { x: 280, y: yOffset * 80 },
+      data: {
+        typeToken: ghostType,
+        label: ghostName,
+      },
+    });
+    yOffset++;
+  }
+
   return { nodes, edges };
 }
 

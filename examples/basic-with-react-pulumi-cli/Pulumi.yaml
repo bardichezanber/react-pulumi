@@ -1,0 +1,3 @@
+name: basic-with-react-pulumi-cli
+runtime: nodejs
+description: react-pulumi example using the CLI with @pulumi/random

@@ -1,14 +1,12 @@
-import { basename, resolve } from "node:path";
 import { createElement } from "react";
+import { resolveProject } from "../project.js";
 
 interface PreviewOptions {
   stack: string;
-  cwd?: string;
 }
 
 export async function preview(entry: string, opts: PreviewOptions): Promise<void> {
-  const entryPath = resolve(entry);
-  const projectName = basename(process.cwd());
+  const { projectDir, projectName, entryPath } = resolveProject(entry);
 
   console.log(`[react-pulumi] Loading ${entryPath}...`);
 
@@ -27,15 +25,18 @@ export async function preview(entry: string, opts: PreviewOptions): Promise<void
   );
   setPulumiSDK(pulumi);
 
-  const stack = await LocalWorkspace.createOrSelectStack({
-    projectName,
-    stackName: opts.stack,
-    program: async () => {
-      const element = createElement(App);
-      const tree = renderToResourceTree(element);
-      materializeTree(tree);
+  const stack = await LocalWorkspace.createOrSelectStack(
+    {
+      projectName,
+      stackName: opts.stack,
+      program: async () => {
+        const element = createElement(App);
+        const tree = renderToResourceTree(element);
+        materializeTree(tree);
+      },
     },
-  });
+    { workDir: projectDir },
+  );
 
   console.log(`[react-pulumi] Running 'preview' on stack '${opts.stack}'...`);
 

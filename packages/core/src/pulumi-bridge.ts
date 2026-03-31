@@ -137,9 +137,6 @@ export function materializeTree(
   }
 
   function walk(node: ResourceNode, pulumiParent?: unknown): void {
-    // Action nodes — not infrastructure, skip
-    if (node.kind === "action") return;
-
     // Root and transparent component nodes — pass through
     if (node.type === ROOT_TYPE || node.kind === "component") {
       for (const child of node.children) {

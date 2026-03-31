@@ -1,6 +1,3 @@
-export type { ActionEntry } from "./action-registry.js";
-export { actionRegistry } from "./action-registry.js";
-export { Action } from "./components/Action.js";
 export type { GroupProps } from "./components/Group.js";
 export { Group } from "./components/Group.js";
 export { useConfig } from "./hooks/useConfig.js";

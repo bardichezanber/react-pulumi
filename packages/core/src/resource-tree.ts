@@ -7,8 +7,8 @@ export interface ResourceMeta {
 }
 
 export interface ResourceNode {
-  /** Whether this is a real Pulumi resource, a React component group, a ComponentResource group, or an action */
-  kind: "resource" | "component" | "group" | "action";
+  /** Whether this is a real Pulumi resource, a React component group, or a ComponentResource group */
+  kind: "resource" | "component" | "group";
   /** Pulumi type token, e.g. "aws:ec2:Instance", or component name */
   type: string;
   /** Logical name for the resource */
