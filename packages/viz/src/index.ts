@@ -7,3 +7,4 @@ export type { InfraState } from "./infra-store.js";
 export { useInfraStore } from "./infra-store.js";
 export type { WsBroadcaster, WsServerOptions } from "./ws-server.js";
 export { createWsServer } from "./ws-server.js";
+export { VizHistoryStore, computeTreeHash } from "./viz-history.js";

@@ -59,7 +59,7 @@ describe("useInfraStore", () => {
   it("updateResourceStatus adds entry to record", () => {
     useInfraStore.getState().updateResourceStatus("urn:test:resource", "creating");
     expect(useInfraStore.getState().resourceStatuses["urn:test:resource"]).toEqual({
-      urn: "urn:test:resource",
+      key: "urn:test:resource",
       status: "creating",
       error: undefined,
     });

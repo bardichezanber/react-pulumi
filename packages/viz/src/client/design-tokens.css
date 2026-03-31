@@ -82,3 +82,9 @@ body {
 .react-flow__edge-path {
   stroke: var(--border) !important;
 }
+
+/* Status dot pulse animation */
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

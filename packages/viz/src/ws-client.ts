@@ -15,6 +15,8 @@ export function useWebSocket(): void {
 
   const setResourceTree = useInfraStore((s) => s.setResourceTree);
   const setDeploymentStatus = useInfraStore((s) => s.setDeploymentStatus);
+  const updateResourceStatus = useInfraStore((s) => s.updateResourceStatus);
+  const setResourceStatuses = useInfraStore((s) => s.setResourceStatuses);
   const appendTimelineEntry = useInfraStore((s) => s.appendTimelineEntry);
   const appendAction = useInfraStore((s) => s.appendAction);
   const setWsConnected = useInfraStore((s) => s.setWsConnected);
@@ -54,6 +56,18 @@ export function useWebSocket(): void {
             case "action_entry":
               appendAction((msg as any).entry);
               break;
+            case "resource_status":
+              updateResourceStatus((msg as any).key, (msg as any).status);
+              break;
+            case "resource_statuses_bulk": {
+              const statuses = (msg as any).statuses as Record<string, string>;
+              const entries: Record<string, import("./types.js").ResourceStatusEntry> = {};
+              for (const [key, status] of Object.entries(statuses)) {
+                entries[key] = { key, status: status as any };
+              }
+              setResourceStatuses(entries);
+              break;
+            }
             case "replay_complete":
               setWsReplayDone(true);
               break;
@@ -80,5 +94,5 @@ export function useWebSocket(): void {
       clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
-  }, [setResourceTree, setDeploymentStatus, appendTimelineEntry, setWsConnected, setWsReplayDone]);
+  }, [setResourceTree, setDeploymentStatus, updateResourceStatus, setResourceStatuses, appendTimelineEntry, setWsConnected, setWsReplayDone]);
 }

@@ -26,7 +26,7 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     installInterceptor, loadState, prepareForRerender, resetMiddlewareState,
   } = await import("@react-pulumi/core");
   const { PersistenceMiddleware, BroadcastMiddleware } = await import("@react-pulumi/core/middlewares");
-  const { startVizServer } = await import("@react-pulumi/viz");
+  const { startVizServer, VizHistoryStore, computeTreeHash } = await import("@react-pulumi/viz");
 
   // ── Middleware pipeline (long-lived, shared across re-renders) ──
   let broadcastFn: (data: string) => void = () => {};
@@ -76,6 +76,85 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
   // Initial render
   let tree = renderApp();
 
+  // ── Load resource statuses from Pulumi stack state ──
+
+  /**
+   * Parse a Pulumi URN into a type::name key for matching against the resource tree.
+   * URN format: urn:pulumi:<stack>::<project>::<type>::<name>
+   */
+  function urnToKey(urn: string): string | null {
+    const parts = urn.split("::");
+    if (parts.length < 4) return null;
+    const type = parts[2];
+    const name = parts[3];
+    return `${type}::${name}`;
+  }
+
+  async function loadResourceStatuses(): Promise<Record<string, string>> {
+    try {
+      const { LocalWorkspace } = await import("@pulumi/pulumi/automation/index.js");
+      const projectName = basename(process.cwd());
+      const stackName = opts.stack ?? "dev";
+
+      const stack = await LocalWorkspace.createOrSelectStack({
+        projectName,
+        stackName,
+        program: async () => {},
+      });
+
+      const state = await stack.exportStack();
+      const resources = (state as any)?.deployment?.resources;
+      if (!Array.isArray(resources)) return {};
+
+      const statuses: Record<string, string> = {};
+      for (const res of resources) {
+        if (!res.urn) continue;
+        const key = urnToKey(res.urn);
+        if (key) statuses[key] = "created";
+      }
+      return statuses;
+    } catch {
+      // Stack doesn't exist yet or Pulumi not configured — return empty
+      return {};
+    }
+  }
+
+  let initialResourceStatuses: Record<string, string> = {};
+  try {
+    initialResourceStatuses = await loadResourceStatuses();
+    const count = Object.keys(initialResourceStatuses).length;
+    if (count > 0) {
+      console.log(`[react-pulumi] Loaded ${count} resource statuses from stack state`);
+    }
+  } catch {
+    // Non-fatal — statuses will just be empty
+  }
+
+  // ── Viz History Store ──
+  const projectDir = process.cwd();
+  const historyStore = new VizHistoryStore(projectDir);
+  historyStore.load();
+
+  // Snapshot initial state from viz controls
+  function snapshotControlState(): Record<string, unknown> {
+    const snap: Record<string, unknown> = {};
+    for (const ctrl of vizRegistry.list()) {
+      if (ctrl.controlType === "input" && ctrl.value !== undefined) {
+        snap[ctrl.name] = ctrl.value;
+      }
+    }
+    return snap;
+  }
+
+  // Record initial render
+  historyStore.append({
+    id: randomUUID(),
+    entryType: "initial",
+    timestamp: Date.now(),
+    stateSnapshot: snapshotControlState(),
+    treeHash: computeTreeHash(tree),
+  });
+
   console.log(`[react-pulumi] Starting viz server on http://localhost:${port}`);
   console.log(`[react-pulumi] Registered ${vizRegistry.size} viz controls`);
 
@@ -83,8 +162,10 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     port,
     tree,
     broadcastMiddleware: broadcast,
-    projectDir: process.cwd(),
+    projectDir,
     initialControls: vizRegistry.list(),
+    initialResourceStatuses,
+    historyStore,
   });
 
   // Wire broadcast function to WebSocket server
@@ -102,6 +183,29 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     tree = renderApp();
     server.updateTree(tree);
     return { controls: vizRegistry.list() };
+  };
+
+  // Time-travel: re-render with historical state, then restore live state
+  server.onTimeTravel = async (stateSnapshot: Record<string, unknown>) => {
+    // Save current live state
+    const liveState = snapshotControlState();
+
+    // Inject historical state via viz control setters
+    for (const [name, value] of Object.entries(stateSnapshot)) {
+      await vizRegistry.invoke(name, value);
+    }
+
+    // Re-render with historical state
+    const historicalTree = renderApp();
+    const treeHash = computeTreeHash(historicalTree);
+
+    // Restore live state
+    for (const [name, value] of Object.entries(liveState)) {
+      await vizRegistry.invoke(name, value);
+    }
+    renderApp(); // Re-render to restore live tree
+
+    return { tree: historicalTree, treeHash };
   };
 
   // Shared: create a Pulumi stack with the current viz state
@@ -127,7 +231,7 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     return { stack, stackName };
   }
 
-  // Parse Pulumi output lines into structured resource changes
+  // Parse Pulumi output lines into structured resource changes + broadcast status
   function parseOutputLine(
     out: string,
     changes: Array<{ op: string; type: string; name: string }>,
@@ -138,6 +242,11 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
       const [, symbol, type, name] = match;
       const op = symbol === "+" ? "create" : symbol === "~" ? "update" : "delete";
       changes.push({ op, type, name });
+
+      // Broadcast real-time resource status
+      const key = `${type}::${name}`;
+      const status = op === "create" ? "creating" : op === "update" ? "updating" : "deleting";
+      server.wsBroadcaster?.broadcast({ type: "resource_status", key, status });
     }
   }
 
@@ -172,6 +281,14 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     const result = await stack.up({
       onOutput: (out: string) => parseOutputLine(out, resourceChanges),
     });
+
+    // Refresh statuses from stack state after deploy
+    try {
+      const postDeployStatuses = await loadResourceStatuses();
+      server.updateResourceStatuses(postDeployStatuses);
+    } catch {
+      // Non-fatal
+    }
 
     prepareForRerender();
 

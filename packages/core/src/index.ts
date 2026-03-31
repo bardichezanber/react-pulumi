@@ -46,8 +46,10 @@ export type {
   DeployHistoryEntry,
   DeployStatus,
   PreviewSummary,
+  ResourceStatus,
   ServerMessage,
   VizControlDescriptor,
+  VizHistoryEntry,
 } from "./viz-types.js";
 export { vizRegistry } from "./viz-registry.js";
 export type { VizControlEntry } from "./viz-registry.js";

@@ -14,6 +14,7 @@
  *   Pushes state_event, deploy_outcome, status_update, replay on connect
  */
 
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { createServer as createHttpServer, type Server as HttpServer } from "node:http";
 import { dirname, join } from "node:path";
@@ -23,6 +24,8 @@ import { ActionLogMiddleware } from "@react-pulumi/core/middlewares";
 import type { BroadcastMiddleware } from "@react-pulumi/core/middlewares";
 import type { DeploymentStatus } from "./types.js";
 import { createWsServer, type WsBroadcaster } from "./ws-server.js";
+import type { VizHistoryStore } from "./viz-history.js";
+import { computeTreeHash } from "./viz-history.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +37,10 @@ export interface VizServerOptions {
   projectDir?: string;
   /** Initial controls from the CLI render (avoids cross-module vizRegistry reads) */
   initialControls?: VizControlDescriptor[];
+  /** Initial resource statuses from Pulumi stack state (key = type::name) */
+  initialResourceStatuses?: Record<string, string>;
+  /** Persistent viz history store */
+  historyStore?: VizHistoryStore;
 }
 
 /** Strip circular `parent` references for JSON serialization */
@@ -47,6 +54,7 @@ export interface VizServer {
   close: () => void;
   updateTree: (tree: ResourceNode) => void;
   updateStatus: (status: DeploymentStatus) => void;
+  updateResourceStatuses: (statuses: Record<string, string>) => void;
   httpServer: HttpServer;
   wsBroadcaster: WsBroadcaster | null;
   /** Set by CLI layer to handle deploy/preview/rollback */
@@ -57,15 +65,21 @@ export interface VizServer {
   onInvoke: ((name: string, value?: unknown) => Promise<void>) | null;
   /** Lightweight re-render after viz control change (NOT pulumi preview) */
   onRerender: (() => Promise<unknown>) | null;
+  /** Time-travel: re-render with historical state, return tree + hash */
+  onTimeTravel: ((stateSnapshot: Record<string, unknown>) => Promise<{ tree: ResourceNode; treeHash: string }>) | null;
 }
 
 export async function startVizServer(opts: VizServerOptions): Promise<VizServer> {
   let currentTree = opts.tree;
   let currentStatus: DeploymentStatus = opts.status ?? "idle";
+  let currentResourceStatuses: Record<string, string> = opts.initialResourceStatuses ?? {};
   let busy = false;
 
   // Action log — records user-initiated state changes for the Timeline
   const actionLog: VizActionEntry[] = [];
+
+  // Persistent history store
+  const historyStore = opts.historyStore ?? null;
 
   // Cache the last known controls for consistent snapshots.
   // Initialized from CLI-provided controls to avoid cross-module vizRegistry reads.
@@ -88,6 +102,7 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
   let onRollback: ((targetState: { keys: string[]; values: unknown[] }) => Promise<unknown>) | null = null;
   let onInvoke: ((name: string, value?: unknown) => Promise<void>) | null = null;
   let onRerender: (() => Promise<unknown>) | null = null;
+  let onTimeTravel: ((stateSnapshot: Record<string, unknown>) => Promise<{ tree: ResourceNode; treeHash: string }>) | null = null;
 
   // In production, serve pre-built client from dist/client/
   const clientDir = join(__dirname, "client");
@@ -160,6 +175,11 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
       return;
     }
 
+    if (url.pathname === "/api/resource-statuses" && req.method === "GET") {
+      json(200, { statuses: currentResourceStatuses });
+      return;
+    }
+
     if (url.pathname === "/api/deploy" && req.method === "POST") {
       if (busy) { json(409, { error: "Operation in progress" }); return; }
       if (!onDeploy) { json(501, { error: "Deploy not configured" }); return; }
@@ -168,9 +188,38 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
       try {
         const result = await onDeploy();
         wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
+
+        // Record deploy history
+        if (historyStore) {
+          historyStore.append({
+            id: randomUUID(),
+            entryType: "deploy",
+            timestamp: Date.now(),
+            stateSnapshot: snapshotState(),
+            treeHash: computeTreeHash(currentTree),
+            deployId: randomUUID().slice(0, 8),
+            deploySuccess: true,
+            resourceStatuses: { ...currentResourceStatuses },
+          });
+        }
+
         json(200, { result });
       } catch (err) {
         wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
+
+        // Record failed deploy
+        if (historyStore) {
+          historyStore.append({
+            id: randomUUID(),
+            entryType: "deploy_failed",
+            timestamp: Date.now(),
+            stateSnapshot: snapshotState(),
+            treeHash: computeTreeHash(currentTree),
+            deployId: randomUUID().slice(0, 8),
+            deploySuccess: false,
+          });
+        }
+
         json(500, { error: err instanceof Error ? err.message : String(err) });
       } finally {
         busy = false;
@@ -256,6 +305,21 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
         actionLog.push(entry);
         wsBroadcaster?.broadcast({ type: "action_entry", entry });
 
+        // Record persistent history entry
+        if (historyStore) {
+          historyStore.append({
+            id: randomUUID(),
+            entryType: "action",
+            trigger: entry.trigger,
+            controlType: entry.controlType,
+            timestamp: entry.timestamp,
+            stateSnapshot: stateAfter,
+            stateBefore,
+            stateAfter,
+            treeHash: computeTreeHash(currentTree),
+          });
+        }
+
         lastKnownControls = afterControls;
         json(200, { ok: true, controls: afterControls });
       } catch (err) {
@@ -267,6 +331,34 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
     // GET /api/actions — return action log for Timeline
     if (url.pathname === "/api/actions" && req.method === "GET") {
       json(200, { actions: actionLog });
+      return;
+    }
+
+    // GET /api/viz-history — persistent history for time machine
+    if (url.pathname === "/api/viz-history" && req.method === "GET") {
+      json(200, { entries: historyStore?.getAll() ?? [] });
+      return;
+    }
+
+    // POST /api/time-travel — re-render with historical state
+    if (url.pathname === "/api/time-travel" && req.method === "POST") {
+      if (!onTimeTravel) { json(501, { error: "Time travel not configured" }); return; }
+      try {
+        const body = JSON.parse(await readBody());
+        if (!body.stateSnapshot || !body.originalTreeHash) {
+          json(400, { error: "Missing stateSnapshot or originalTreeHash" });
+          return;
+        }
+        const result = await onTimeTravel(body.stateSnapshot) as { tree: any; treeHash: string };
+        const codeChanged = result.treeHash !== body.originalTreeHash;
+        json(200, {
+          tree: JSON.parse(JSON.stringify(result.tree, treeToJSON)),
+          treeHash: result.treeHash,
+          codeChanged,
+        });
+      } catch (err) {
+        json(500, { error: err instanceof Error ? err.message : String(err) });
+      }
       return;
     }
 
@@ -322,6 +414,7 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
         onRollback: null,
         onInvoke: null,
         onRerender: null,
+        onTimeTravel: null,
         close: () => {
           wsBroadcaster?.close();
           server.close();
@@ -337,6 +430,10 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
         updateStatus: (status: DeploymentStatus) => {
           currentStatus = status;
           wsBroadcaster?.broadcast({ type: "status_update", status: status as DeployStatus });
+        },
+        updateResourceStatuses: (statuses: Record<string, string>) => {
+          currentResourceStatuses = statuses;
+          wsBroadcaster?.broadcast({ type: "resource_statuses_bulk", statuses: statuses as Record<string, import("@react-pulumi/core").ResourceStatus> });
         },
       };
       // Wire mutable handler references
@@ -359,6 +456,10 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
       Object.defineProperty(vizServer, "onRerender", {
         get: () => onRerender,
         set: (v) => { onRerender = v; },
+      });
+      Object.defineProperty(vizServer, "onTimeTravel", {
+        get: () => onTimeTravel,
+        set: (v) => { onTimeTravel = v; },
       });
       resolve(vizServer);
     });

@@ -28,9 +28,10 @@ export function App() {
   const setDeploymentStatus = useInfraStore((s) => s.setDeploymentStatus);
 
   const setVizControls = useInfraStore((s) => s.setVizControls);
+  const updateResourceStatus = useInfraStore((s) => s.updateResourceStatus);
 
   useEffect(() => {
-    // Fetch tree + controls on mount
+    // Fetch tree + controls + resource statuses on mount
     fetch("/api/tree")
       .then((r) => r.json())
       .then((data: { tree: ResourceNode | null; status: string }) => {
@@ -43,7 +44,16 @@ export function App() {
       .then((r) => r.json())
       .then((data: { controls: any[] }) => setVizControls(data.controls))
       .catch(() => {});
-  }, [setResourceTree, setDeploymentStatus, setVizControls]);
+
+    fetch("/api/resource-statuses")
+      .then((r) => r.json())
+      .then((data: { statuses: Record<string, string> }) => {
+        for (const [key, status] of Object.entries(data.statuses)) {
+          updateResourceStatus(key, status as any);
+        }
+      })
+      .catch(() => {});
+  }, [setResourceTree, setDeploymentStatus, setVizControls, updateResourceStatus]);
 
   if (!resourceTree) {
     return (
