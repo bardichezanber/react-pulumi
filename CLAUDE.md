@@ -69,7 +69,14 @@ Uses `updateContainerSync()` + `flushSyncWork()` (not the older `flushSync`) for
 Module-level store for persisted `useState` values. `loadState()` hydrates from `Pulumi.<stack>.yaml`, `getNextValue()` returns hydrated or default values, `trackValue()` tracks setter calls, `collectState()` snapshots for persistence.
 
 ### `packages/core/src/state-interceptor.ts`
-Proxy-based interceptor on React 19's `__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE.H` dispatcher. Wraps `useState` to hydrate from persisted state; all other hooks pass through. `installInterceptor()` returns a cleanup function.
+Proxy-based interceptor on React 19's `__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE.H` dispatcher. Wraps `useState` to hydrate from persisted state and dispatch `HydrateEvent`/`SetterCallEvent` to a middleware pipeline. `installInterceptor({ middlewares })` accepts a `StateMiddleware[]` array and returns a cleanup function. Fixes the stale closure bug where functional setter updates used render-time value instead of current value.
+
+### `packages/core/src/state-middleware.ts`
+Event types (`HydrateEvent`, `SetterCallEvent`, `DeployOutcomeEvent` discriminated union), `StateMiddleware` interface, and error-resilient dispatch functions. Module-level sequence counter and deployId reset per `renderToPulumi` call.
+
+### `packages/core/src/middlewares/`
+- `persistence-middleware.ts`: Bridges middleware pipeline to `state-store.ts` `trackValue()`. Only acts on `setter_call` events.
+- `action-log-middleware.ts`: Records events in memory, flushes to `.react-pulumi/action-log.json` on deploy outcome. Supports loading history from disk for cross-deploy event accumulation. Exported via `@react-pulumi/core/middlewares` subpath (Node.js only, not browser-safe).
 
 ### `packages/core/src/hooks/useConfig.ts`
 `useConfig(key, defaultValue?)` reads Pulumi stack config during render. Supports namespaced keys (`"aws:region"` → `Config("aws").get("region")`). Config instances cached per namespace, reset between `renderToPulumi` calls.
@@ -151,13 +158,31 @@ const [Bucket, BucketCtx] = pulumiToComponent(aws.s3.Bucket);
 // Leaf (no Context needed): const [Lambda] = pulumiToComponent(aws.lambda.Function);
 ```
 
-## Viz store
+## Viz dashboard
 
-Zustand store at `packages/viz/src/store.ts` tracks:
-- `resourceTree` — full ResourceNode tree
-- `deploymentStatus` — idle/previewing/deploying/destroying/complete/error
-- `resourceStatuses` — per-resource URN status map
+### `packages/viz/src/infra-store.ts`
+Zustand store with `devtools` middleware (sends state to Redux DevTools). Tracks: `resourceTree`, `deploymentStatus`, `resourceStatuses`, `timeline` (ActionLogEntry[]), `deployHistory`, `vizControls`, `wsConnected`, `wsReplayDone`. Replaces the old `store.ts`.
 
-## Actions system
+### `packages/viz/src/ws-server.ts`
+WebSocket server (path `/ws`) using `ws` library. Attaches to the HTTP server via upgrade. On new client connect, replays buffered events from `BroadcastMiddleware.getReplayBuffer()`, then sends `replay_complete` sentinel.
 
-`<Action name="scale-up" handler={fn} />` registers in `actionRegistry`. Viz dashboard will surface these as buttons; REST API (`GET /actions`, `POST /actions/:name`) is planned.
+### `packages/viz/src/server.ts`
+HTTP + WebSocket server. REST API: `GET /api/tree`, `GET /api/history`, `GET /api/viz-controls`, `POST /api/deploy`, `POST /api/preview`, `POST /api/rollback`, `POST /api/viz-controls/:name`. Busy lock for deploy/rollback (409 Conflict). All handler callbacks (`onDeploy`/`onPreview`/`onRollback`/`onInvoke`) are set by the CLI layer. **Server never imports `vizRegistry` directly** — all control reads/invocations are delegated to the CLI module context via callbacks to avoid tsx + pnpm dual-module issues. Initial controls are passed via `initialControls` option; `lastKnownControls` is updated from `onPreview` results.
+
+### `packages/viz/src/ws-client.ts`
+Browser-side `useWebSocket` hook. Auto-reconnects on close (2s interval). Dispatches events to `useInfraStore`.
+
+### Client components
+- `ControlPanel.tsx` — Deploy/Preview buttons + WS connection status
+- `Timeline.tsx` — deploy history list + state snapshots + rollback button
+- `VizControls.tsx` — renders VizInput/VizButton controls from `vizRegistry`
+
+## Actions and Viz controls
+
+`<Action name="scale-up" handler={fn} />` registers in `actionRegistry`. `<VizInput>` and `<VizButton>` register in `vizRegistry` — these render as controllable UI in the viz dashboard. `vizRegistry` is analogous to `actionRegistry` (module-level Map). `vizRegistry.lock()`/`unlock()` prevents React 19's ConcurrentRoot deferred re-renders from overwriting correct intercepted setters with stale-indexed ones (used by `viz.ts` after each synchronous render).
+
+## Design System
+Always read DESIGN.md before making any visual or UI decisions.
+All font choices, colors, spacing, node taxonomy, and aesthetic direction are defined there.
+Do not deviate without explicit user approval.
+In QA mode, flag any code that doesn't match DESIGN.md.

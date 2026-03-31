@@ -1,0 +1,9 @@
+{
+  "name": "state-machine-demo",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@react-pulumi/core": "workspace:*",
+    "react": "^19.0.0"
+  }
+}

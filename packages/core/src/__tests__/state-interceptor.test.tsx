@@ -1,7 +1,9 @@
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
+import { PersistenceMiddleware } from "../middlewares/persistence-middleware.js";
 import { collectHookKeys, renderToResourceTree } from "../renderer.js";
 import { installInterceptor } from "../state-interceptor.js";
+import { resetMiddlewareState } from "../state-middleware.js";
 import { loadState, resetState } from "../state-store.js";
 import { pulumiToComponent } from "../wrap.js";
 
@@ -19,13 +21,14 @@ const [Instance] = pulumiToComponent(MockInstance as never, "aws:ec2:Instance");
 
 beforeEach(() => {
   resetState();
+  resetMiddlewareState("test-deploy");
 });
 
 describe("state-interceptor", () => {
   it("useState returns persisted value instead of default", () => {
     loadState({ keys: ["App:0"], values: [5] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedCount = -1;
     function App() {
@@ -45,7 +48,7 @@ describe("state-interceptor", () => {
   it("useState returns default when no persisted state", () => {
     loadState({ keys: [], values: [] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedCount = -1;
     function App() {
@@ -65,7 +68,7 @@ describe("state-interceptor", () => {
   it("cleanup restores original useState behavior", () => {
     loadState({ keys: ["App:0"], values: [10] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
     cleanup();
 
     // Reset for fresh render
@@ -88,7 +91,7 @@ describe("state-interceptor", () => {
   it("handles multiple useState hooks in one component", () => {
     loadState({ keys: ["App:0", "App:1"], values: [3, "t3.large"] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedCount = -1;
     let capturedType = "";
@@ -112,7 +115,7 @@ describe("state-interceptor", () => {
   it("handles useState with lazy initializer function", () => {
     loadState({ keys: ["App:0"], values: [7] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedCount = -1;
     function App() {
@@ -132,7 +135,7 @@ describe("state-interceptor", () => {
   it("does not interfere with useMemo", () => {
     loadState({ keys: ["App:0"], values: [4] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedDoubled = -1;
     function App() {
@@ -154,7 +157,7 @@ describe("state-interceptor", () => {
   it("does not interfere with useRef", () => {
     loadState({ keys: ["App:0"], values: [2] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedCount = -1;
     let capturedRef = "";
@@ -178,7 +181,7 @@ describe("state-interceptor", () => {
   it("handles persisted boolean state", () => {
     loadState({ keys: ["App:0"], values: [true] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedEnabled = false;
     function App() {
@@ -197,7 +200,7 @@ describe("state-interceptor", () => {
   it("handles persisted string state", () => {
     loadState({ keys: ["App:0"], values: ["us-west-2"] });
 
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     let capturedRegion = "";
     function App() {
@@ -216,7 +219,7 @@ describe("state-interceptor", () => {
 describe("collectHookKeys", () => {
   it("extracts useState keys from fiber tree", () => {
     loadState({ keys: [], values: [] });
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     function App() {
       const [count] = useState(2);
@@ -237,7 +240,7 @@ describe("collectHookKeys", () => {
 
   it("collects keys from nested components", () => {
     loadState({ keys: [], values: [] });
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     function Inner() {
       const [size] = useState("large");
@@ -274,7 +277,7 @@ describe("collectHookKeys", () => {
 
   it("distinguishes useState from useMemo/useCallback in key counting", () => {
     loadState({ keys: [], values: [] });
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     function App() {
       const [count] = useState(2);
@@ -296,7 +299,7 @@ describe("collectHookKeys", () => {
 
   it("handles sibling components each with their own hooks", () => {
     loadState({ keys: [], values: [] });
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares: [new PersistenceMiddleware()] });
 
     function Left() {
       const [a] = useState(1);
