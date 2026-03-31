@@ -20,24 +20,61 @@ import {
 } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
-import type { ResourceNode } from "@react-pulumi/core";
+import type { ResourceNode, ResourceStatus } from "@react-pulumi/core";
 import { ROOT_TYPE } from "@react-pulumi/core";
 import { useInfraStore } from "./infra-store.js";
+
+// ── Status Dot ──
+
+const statusDotStyles: Record<string, { color: string; pulse: boolean }> = {
+  created: { color: "var(--success)", pulse: false },
+  updated: { color: "var(--success)", pulse: false },
+  creating: { color: "var(--warning)", pulse: true },
+  updating: { color: "var(--warning)", pulse: true },
+  deleting: { color: "var(--error)", pulse: true },
+  deleted: { color: "var(--error)", pulse: false },
+  failed: { color: "var(--error)", pulse: false },
+};
+
+function StatusDot({ status }: { status?: ResourceStatus }) {
+  const style = status ? statusDotStyles[status] : null;
+  // No status = gray pending dot
+  const color = style?.color ?? "var(--text-dim)";
+  const pulse = style?.pulse ?? false;
+
+  return (
+    <span
+      style={{
+        position: "absolute",
+        top: 4,
+        right: 4,
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        background: color,
+        animation: pulse ? "statusPulse 1.5s ease-in-out infinite" : undefined,
+      }}
+    />
+  );
+}
 
 // ── Custom Node Components ──
 
 function ResourceNodeComponent({ data }: NodeProps) {
+  const d = data as any;
   return (
     <div style={{
+      position: "relative",
       background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)",
       padding: "6px 12px", minWidth: 200, fontFamily: "var(--font-sans)",
     }}>
       <Handle type="target" position={Position.Top} style={{ background: "var(--border)" }} />
+      <StatusDot status={d.resourceStatus} />
       <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-        {(data as any).typeToken}
+        {d.typeToken}
       </div>
       <div style={{ fontSize: "var(--text-base)", fontWeight: 500, color: "var(--text)" }}>
-        {(data as any).label}
+        {d.label}
       </div>
       <Handle type="source" position={Position.Bottom} style={{ background: "var(--border)" }} />
     </div>
@@ -190,6 +227,7 @@ function getTypeToken(node: ResourceNode): string {
 function treeToNodesAndEdges(
   root: ResourceNode,
   vizControls: Array<{ name: string; controlType: string; label?: string; value?: unknown; inputType?: string; min?: number; max?: number }>,
+  resourceStatuses: Record<string, import("./types.js").ResourceStatusEntry>,
   onAction?: () => void,
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
@@ -264,6 +302,13 @@ function treeToNodesAndEdges(
       const shortName = typeToken.includes(":") ? typeToken.split(":").pop() ?? typeToken : typeToken;
       baseData.typeToken = typeToken;
       baseData.label = shortName;
+
+      // Attach resource status for the status dot indicator
+      const statusKey = `${typeToken}::${node.name ?? ""}`;
+      const statusEntry = resourceStatuses[statusKey];
+      if (statusEntry) {
+        baseData.resourceStatus = statusEntry.status;
+      }
     }
 
     nodes.push({
@@ -299,8 +344,13 @@ function treeToNodesAndEdges(
 export function ResourceGraph() {
   const resourceTree = useInfraStore((s) => s.resourceTree);
   const vizControls = useInfraStore((s) => s.vizControls);
+  const resourceStatuses = useInfraStore((s) => s.resourceStatuses);
+  const timeTravelTree = useInfraStore((s) => s.timeTravelTree);
   const setVizControls = useInfraStore((s) => s.setVizControls);
   const setResourceTree = useInfraStore((s) => s.setResourceTree);
+
+  // Use time-travel tree if active, otherwise live tree
+  const displayTree = timeTravelTree ?? resourceTree;
 
   // Refresh controls + tree from server
   const refreshAfterAction = useCallback(() => {
@@ -309,9 +359,9 @@ export function ResourceGraph() {
   }, [setVizControls, setResourceTree]);
 
   const { nodes, edges } = useMemo(() => {
-    if (!resourceTree) return { nodes: [], edges: [] };
-    return treeToNodesAndEdges(resourceTree, vizControls, refreshAfterAction);
-  }, [resourceTree, vizControls, refreshAfterAction]);
+    if (!displayTree) return { nodes: [], edges: [] };
+    return treeToNodesAndEdges(displayTree, vizControls, resourceStatuses, timeTravelTree ? undefined : refreshAfterAction);
+  }, [displayTree, vizControls, resourceStatuses, timeTravelTree, refreshAfterAction]);
 
   return (
     <div style={{ width: "100%", height: "100%" }}>

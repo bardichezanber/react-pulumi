@@ -9,6 +9,16 @@ import type { DeployOutcomeEvent, StateChangeEvent, ActionLogEntry } from "./sta
 // WebSocket message protocol (server → client)
 // ---------------------------------------------------------------------------
 
+export type ResourceStatus =
+  | "pending"
+  | "creating"
+  | "created"
+  | "updating"
+  | "updated"
+  | "deleting"
+  | "deleted"
+  | "failed";
+
 export type ServerMessage =
   | { type: "state_event"; event: StateChangeEvent }
   | { type: "deploy_outcome"; event: DeployOutcomeEvent }
@@ -18,6 +28,8 @@ export type ServerMessage =
   | { type: "replay_complete" }
   | { type: "tree_update"; tree: unknown }
   | { type: "action_entry"; entry: VizActionEntry }
+  | { type: "resource_status"; key: string; status: ResourceStatus }
+  | { type: "resource_statuses_bulk"; statuses: Record<string, ResourceStatus> }
   | { type: "error"; message: string };
 
 export interface VizActionEntry {
@@ -67,4 +79,28 @@ export interface VizControlDescriptor {
   max?: number;
   step?: number;
   description?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Viz History — persistent time machine entries
+// ---------------------------------------------------------------------------
+
+export interface VizHistoryEntry {
+  id: string;
+  entryType: "action" | "deploy" | "deploy_failed" | "initial";
+  trigger?: string;
+  controlType?: "input" | "button";
+  timestamp: number;
+  /** Full state snapshot — any entry can independently restore state */
+  stateSnapshot: Record<string, unknown>;
+  /** State before the action (for diff display) */
+  stateBefore?: Record<string, unknown>;
+  /** State after the action (for diff display) */
+  stateAfter?: Record<string, unknown>;
+  /** SHA-256 of serialized tree — detects code changes without storing full tree */
+  treeHash: string;
+  deployId?: string;
+  deploySuccess?: boolean;
+  /** Resource statuses snapshot at this point */
+  resourceStatuses?: Record<string, string>;
 }

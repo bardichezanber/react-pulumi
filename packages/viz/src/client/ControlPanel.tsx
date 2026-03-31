@@ -16,6 +16,11 @@ export function ControlPanel() {
   const status = useInfraStore((s) => s.deploymentStatus);
   const wsConnected = useInfraStore((s) => s.wsConnected);
   const actions = useInfraStore((s) => s.actions);
+  const timeTravelEntry = useInfraStore((s) => s.timeTravelEntry);
+  const timeTravelCodeChanged = useInfraStore((s) => s.timeTravelCodeChanged);
+  const setTimeTravelEntry = useInfraStore((s) => s.setTimeTravelEntry);
+  const setTimeTravelTree = useInfraStore((s) => s.setTimeTravelTree);
+  const setTimeTravelCodeChanged = useInfraStore((s) => s.setTimeTravelCodeChanged);
   const [error, setError] = useState<string | null>(null);
   const [successFlash, setSuccessFlash] = useState(false);
   const [dialogResult, setDialogResult] = useState<PreviewResult | null>(null);
@@ -91,6 +96,33 @@ export function ControlPanel() {
     setDialogResult(null);
   }, []);
 
+  const exitTimeTravel = useCallback(() => {
+    setTimeTravelEntry(null);
+    setTimeTravelTree(null);
+    setTimeTravelCodeChanged(false);
+  }, [setTimeTravelEntry, setTimeTravelTree, setTimeTravelCodeChanged]);
+
+  const handleRollback = useCallback(async () => {
+    if (!timeTravelEntry) return;
+    const snap = timeTravelEntry.stateSnapshot;
+    const keys = Object.keys(snap);
+    const values = Object.values(snap);
+    exitTimeTravel();
+    setError(null);
+    try {
+      const res = await fetch("/api/rollback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stateSnapshot: { keys, values } }),
+      });
+      if (!res.ok) {
+        setError("Rollback failed");
+      }
+    } catch {
+      setError("Rollback failed");
+    }
+  }, [timeTravelEntry, exitTimeTravel]);
+
   return (
     <div style={{
       height: 40, padding: "0 var(--space-lg)", borderBottom: "1px solid var(--border)",
@@ -134,6 +166,48 @@ export function ControlPanel() {
       >
         Preview
       </button>
+
+      {/* Time-travel banner */}
+      {timeTravelEntry && (
+        <>
+          <span style={{
+            fontFamily: "var(--font-mono)", fontSize: "var(--text-sm)",
+            color: "var(--info)", display: "flex", alignItems: "center", gap: 4,
+          }}>
+            Previewing state from {new Date(timeTravelEntry.timestamp).toLocaleTimeString()}
+          </span>
+          {timeTravelCodeChanged && (
+            <span style={{
+              fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)",
+              color: "var(--warning)", display: "flex", alignItems: "center", gap: 4,
+            }}>
+              ⚠ Code changed — tree may differ from original
+            </span>
+          )}
+          <button
+            onClick={handleRollback}
+            style={{
+              fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", fontWeight: 500,
+              padding: "4px 12px", borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--warning)", background: "transparent", color: "var(--warning)",
+              cursor: "pointer",
+            }}
+          >
+            Rollback to this
+          </button>
+          <button
+            onClick={exitTimeTravel}
+            style={{
+              fontFamily: "var(--font-sans)", fontSize: "var(--text-sm)", fontWeight: 500,
+              padding: "4px 12px", borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border)", background: "var(--surface-raised)", color: "var(--text)",
+              cursor: "pointer",
+            }}
+          >
+            Back to current
+          </button>
+        </>
+      )}
 
       {/* Status */}
       <span style={{
