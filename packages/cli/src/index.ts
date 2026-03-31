@@ -46,6 +46,7 @@ program
   .description("Launch the visualization dashboard")
   .argument("<entry>", "Path to the entry TSX file")
   .option("-p, --port <number>", "Port for the viz server", "3000")
+  .option("-s, --stack <name>", "Stack name", "dev")
   .action(viz);
 
 program.parse();

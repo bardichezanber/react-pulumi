@@ -3,3 +3,5 @@ dist/
 .turbo/
 .pnpm-store/
 *.tsbuildinfo
+.react-pulumi/
+.gstack/

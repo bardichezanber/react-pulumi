@@ -3,18 +3,29 @@
  * with standard `pulumi up`. Handles:
  *
  * 1. Reading persisted useState values from Pulumi.<stack>.yaml
- * 2. Intercepting React's useState to hydrate from persisted state
- * 3. Rendering JSX to a ResourceNode tree
- * 4. Materializing the tree into real Pulumi resources
- * 5. Creating a dynamic resource that writes state back to config on deploy success
+ * 2. Loading action log history from .react-pulumi/action-log.json
+ * 3. Constructing middleware pipeline (Persistence + ActionLog)
+ * 4. Intercepting React's useState to hydrate + dispatch events
+ * 5. Rendering JSX (resources created as side effects)
+ * 6. Creating a dynamic resource that writes state back to config
+ * 7. Emitting deploy outcome event → ActionLogMiddleware flushes to disk
  */
 
+import { randomUUID } from "node:crypto";
 import { createElement, type FC } from "react";
 import { resetConfigCache } from "./hooks/useConfig.js";
 import { resetStackRefCache } from "./hooks/useStackOutput.js";
+import { ActionLogMiddleware } from "./middlewares/action-log-middleware.js";
+import { PersistenceMiddleware } from "./middlewares/persistence-middleware.js";
 import { getPulumiSDK } from "./pulumi-bridge.js";
 import { collectHookKeys, renderToResourceTree } from "./renderer.js";
 import { installInterceptor } from "./state-interceptor.js";
+import {
+  type StateMiddleware,
+  dispatchDeployOutcome,
+  nextSeq,
+  resetMiddlewareState,
+} from "./state-middleware.js";
 import { collectState, loadState, type PersistedState, resetState } from "./state-store.js";
 
 function keysMatch(prev: string[], current: string[]): boolean {
@@ -31,31 +42,28 @@ function createStateHookResource(pulumi: any, state: PersistedState): void {
   const stateJson = JSON.stringify(state);
 
   // Dynamic import of child_process — resolved at Pulumi deploy time.
-  // The module specifier is built as a variable to avoid TypeScript resolving
-  // it (no @types/node in this package). Works fine at runtime in Node.js.
+  // Uses execFileSync with argument array to prevent shell injection.
   const cpModule = "child_process";
-  async function execPulumiCmd(cmd: string): Promise<void> {
+  async function execPulumiCmd(args: string[]): Promise<void> {
     const cp = (await import(cpModule)) as {
-      execSync: (cmd: string, opts: { stdio: string }) => void;
+      execFileSync: (file: string, args: string[], opts: { stdio: string }) => void;
     };
-    cp.execSync(cmd, { stdio: "ignore" });
+    cp.execFileSync("pulumi", args, { stdio: "ignore" });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const provider: any = {
     async create(inputs: { state: string }) {
-      const escaped = inputs.state.replace(/'/g, "'\\''");
-      await execPulumiCmd(`pulumi config set react-pulumi:state '${escaped}'`);
+      await execPulumiCmd(["config", "set", "react-pulumi:state", inputs.state]);
       return { id: "react-pulumi-state", outs: inputs };
     },
     async update(_id: string, _olds: unknown, news: { state: string }) {
-      const escaped = news.state.replace(/'/g, "'\\''");
-      await execPulumiCmd(`pulumi config set react-pulumi:state '${escaped}'`);
+      await execPulumiCmd(["config", "set", "react-pulumi:state", news.state]);
       return { outs: news };
     },
     async delete() {
       try {
-        await execPulumiCmd("pulumi config rm react-pulumi:state");
+        await execPulumiCmd(["config", "rm", "react-pulumi:state"]);
       } catch {
         // Ignore errors during delete — config key may already be gone
       }
@@ -79,7 +87,11 @@ function createStateHookResource(pulumi: any, state: PersistedState): void {
  * The returned value is a function suitable for Pulumi's inline program
  * or as the default export of an index.ts used by `pulumi up`.
  */
-export function renderToPulumi(Component: FC): () => void {
+export interface RenderToPulumiOptions {
+  extraMiddlewares?: StateMiddleware[];
+}
+
+export function renderToPulumi(Component: FC, options?: RenderToPulumiOptions): () => void {
   return () => {
     const pulumi = getPulumiSDK();
 
@@ -89,10 +101,25 @@ export function renderToPulumi(Component: FC): () => void {
     const prevState: PersistedState = stateJson ? JSON.parse(stateJson) : { keys: [], values: [] };
     loadState(prevState);
 
-    // 2. Install useState interceptor and render
+    // 2. Construct middleware pipeline
+    const deployId = randomUUID();
+    const persistence = new PersistenceMiddleware();
+    const actionLog = new ActionLogMiddleware();
+    const history = ActionLogMiddleware.loadHistory();
+    actionLog.onInit(history);
+
+    const extra = options?.extraMiddlewares ?? [];
+    for (const mw of extra) {
+      mw.onInit?.(history);
+    }
+
+    const middlewares: StateMiddleware[] = [persistence, actionLog, ...extra];
+    resetMiddlewareState(deployId);
+
+    // 3. Install useState interceptor with middlewares and render
     //    Resources are created at render time (as side effects of FC components
     //    returned by pulumiToComponent), so no separate materializeTree step needed.
-    const cleanup = installInterceptor();
+    const cleanup = installInterceptor({ middlewares });
     let renderResult: ReturnType<typeof renderToResourceTree> | undefined;
     try {
       renderResult = renderToResourceTree(createElement(Component), {
@@ -102,26 +129,46 @@ export function renderToPulumi(Component: FC): () => void {
       cleanup();
     }
 
-    const { fiberRoot } = renderResult;
+    try {
+      const { fiberRoot } = renderResult;
 
-    // 3. Collect hook keys and validate against previous state
-    const keys = collectHookKeys(fiberRoot);
+      // 4. Collect hook keys and validate against previous state
+      const keys = collectHookKeys(fiberRoot);
 
-    if (prevState.keys.length > 0 && !keysMatch(prevState.keys, keys)) {
-      console.warn(
-        "[react-pulumi] Component structure changed — hook keys no longer match. " +
-          "Some state values may reset to defaults.",
-      );
+      if (prevState.keys.length > 0 && !keysMatch(prevState.keys, keys)) {
+        console.warn(
+          "[react-pulumi] Component structure changed — hook keys no longer match. " +
+            "Some state values may reset to defaults.",
+        );
+      }
+
+      // 5. Create state hook resource (writes config on deploy success)
+      const newState = collectState(keys);
+      if (keys.length > 0) {
+        createStateHookResource(pulumi, newState);
+      }
+
+      // 6. Emit deploy outcome (optimistic — actual deploy runs later via Pulumi engine)
+      const keyMap: Record<number, string> = {};
+      for (let i = 0; i < keys.length; i++) {
+        keyMap[i] = keys[i];
+      }
+
+      dispatchDeployOutcome(middlewares, {
+        type: "deploy_outcome",
+        deployId,
+        success: true,
+        stateSnapshot: newState,
+        keyMap,
+        seq: nextSeq(),
+        timestamp: Date.now(),
+      });
+    } finally {
+      // 7. Cleanup — always runs, even if post-render steps throw
+      resetState();
+      resetMiddlewareState("");
+      resetConfigCache();
+      resetStackRefCache();
     }
-
-    // 4. Create state hook resource (writes config on deploy success)
-    const newState = collectState(keys);
-    if (keys.length > 0) {
-      createStateHookResource(pulumi, newState);
-    }
-
-    resetState();
-    resetConfigCache();
-    resetStackRefCache();
   };
 }

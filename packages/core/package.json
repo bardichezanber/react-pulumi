@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./middlewares": {
+      "types": "./dist/middlewares/index.d.ts",
+      "import": "./dist/middlewares/index.js"
     }
   },
   "files": [
@@ -37,9 +41,10 @@
     "react-reconciler": "^0.31.0"
   },
   "devDependencies": {
+    "@types/node": "^22.19.15",
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
-    "vitest": "^3.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   }
 }

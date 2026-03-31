@@ -1,13 +1,23 @@
 /**
  * Intercepts React's internal useState dispatcher to hydrate values
- * from persisted state and track mutations.
+ * from persisted state and dispatch state change events to middlewares.
  *
  * Uses a Proxy on React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE.H
  * to wrap useState while leaving all other hooks untouched.
+ *
+ * Event flow:
+ *   useState(initialState) → getNextValue() → HydrateEvent → middlewares
+ *   setter(newValue)       → resolve        → SetterCallEvent → middlewares
  */
 
 import React from "react";
-import { getNextValue, trackValue } from "./state-store.js";
+import {
+  type StateMiddleware,
+  dispatchStateChange,
+  getDeployId,
+  nextSeq,
+} from "./state-middleware.js";
+import { getNextValue } from "./state-store.js";
 
 // React 19 internals accessor
 const INTERNALS_KEY = "__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE";
@@ -22,11 +32,17 @@ interface ReactInternals {
   [key: string]: unknown;
 }
 
+export interface InterceptorOptions {
+  middlewares: StateMiddleware[];
+}
+
 /**
- * Install the useState interceptor. Returns a cleanup function
- * that restores the original behavior.
+ * Install the useState interceptor with a middleware pipeline.
+ * Returns a cleanup function that restores the original behavior.
  */
-export function installInterceptor(): () => void {
+export function installInterceptor(options: InterceptorOptions): () => void {
+  const { middlewares } = options;
+
   const internals = (React as unknown as Record<string, unknown>)[INTERNALS_KEY] as
     | ReactInternals
     | undefined;
@@ -57,16 +73,46 @@ export function installInterceptor(): () => void {
 
             const { index, value } = getNextValue(defaultValue);
 
+            // Dispatch hydrate event to middlewares
+            dispatchStateChange(middlewares, {
+              type: "hydrate",
+              index,
+              value,
+              defaultValue,
+              seq: nextSeq(),
+              timestamp: Date.now(),
+              deployId: getDeployId(),
+            });
+
             // Call the real useState with our hydrated value
             const [, originalSetter] = target.useState(value as T);
 
-            // Wrap the setter to track value changes
+            // Mutable ref for current value — fixes stale closure bug
+            // where functional updates (prev => next) would use the
+            // render-time value instead of the latest value.
+            let currentValue = value as T;
+
+            // Wrap the setter to dispatch events via middleware pipeline
             const wrappedSetter = (newValue: T | ((prev: T) => T)) => {
               const resolved =
                 typeof newValue === "function"
-                  ? (newValue as (prev: T) => T)(value as T)
+                  ? (newValue as (prev: T) => T)(currentValue)
                   : newValue;
-              trackValue(index, resolved);
+
+              const previousValue = currentValue;
+              currentValue = resolved;
+
+              // Dispatch setter event — PersistenceMiddleware calls trackValue()
+              dispatchStateChange(middlewares, {
+                type: "setter_call",
+                index,
+                previousValue,
+                newValue: resolved,
+                seq: nextSeq(),
+                timestamp: Date.now(),
+                deployId: getDeployId(),
+              });
+
               originalSetter(resolved);
             };
 

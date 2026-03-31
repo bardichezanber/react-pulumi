@@ -2,5 +2,8 @@
 
 export type { VizServer, VizServerOptions } from "./server.js";
 export { startVizServer } from "./server.js";
-export type { DeploymentStatus, ResourceStatus, ResourceStatusEntry, VizState } from "./store.js";
-export { useVizStore } from "./store.js";
+export type { DeploymentStatus, ResourceStatus, ResourceStatusEntry } from "./types.js";
+export type { InfraState } from "./infra-store.js";
+export { useInfraStore } from "./infra-store.js";
+export type { WsBroadcaster, WsServerOptions } from "./ws-server.js";
+export { createWsServer } from "./ws-server.js";

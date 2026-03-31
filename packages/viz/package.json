@@ -37,16 +37,18 @@
   "dependencies": {
     "@react-pulumi/core": "workspace:*",
     "@xyflow/react": "^12.0.0",
+    "ws": "^8.20.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
     "vite": "^6.0.0",
-    "vitest": "^3.0.0",
-    "typescript": "^5.7.0"
+    "vitest": "^3.0.0"
   }
 }
