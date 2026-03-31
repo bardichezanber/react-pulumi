@@ -167,14 +167,21 @@ Zustand store with `devtools` middleware (sends state to Redux DevTools). Tracks
 WebSocket server (path `/ws`) using `ws` library. Attaches to the HTTP server via upgrade. On new client connect, replays buffered events from `BroadcastMiddleware.getReplayBuffer()`, then sends `replay_complete` sentinel.
 
 ### `packages/viz/src/server.ts`
-HTTP + WebSocket server. REST API: `GET /api/tree`, `GET /api/history`, `GET /api/viz-controls`, `POST /api/deploy`, `POST /api/preview`, `POST /api/rollback`, `POST /api/viz-controls/:name`. Busy lock for deploy/rollback (409 Conflict). All handler callbacks (`onDeploy`/`onPreview`/`onRollback`/`onInvoke`) are set by the CLI layer. **Server never imports `vizRegistry` directly** — all control reads/invocations are delegated to the CLI module context via callbacks to avoid tsx + pnpm dual-module issues. Initial controls are passed via `initialControls` option; `lastKnownControls` is updated from `onPreview` results.
+HTTP + WebSocket server. REST API: `GET /api/tree`, `GET /api/history`, `GET /api/viz-controls`, `POST /api/deploy`, `POST /api/preview`, `POST /api/rollback`, `POST /api/viz-controls/:name`. Busy lock for deploy/preview/rollback (409 Conflict). All handler callbacks are set by the CLI layer:
+- `onRerender` — lightweight re-render after viz control change (updates tree + controls)
+- `onPreview` — real `pulumi preview` via Automation API, returns per-resource change summary
+- `onDeploy` — real `pulumi up` via Automation API, returns per-resource change summary
+- `onInvoke` — invoke a viz control in the CLI module context
+- `onRollback` — set config + deploy
+**Server never imports `vizRegistry` directly** — all control reads/invocations are delegated to the CLI module context via callbacks to avoid tsx + pnpm dual-module issues. Initial controls are passed via `initialControls` option; `lastKnownControls` is updated from `onRerender` results.
 
 ### `packages/viz/src/ws-client.ts`
 Browser-side `useWebSocket` hook. Auto-reconnects on close (2s interval). Dispatches events to `useInfraStore`.
 
 ### Client components
-- `ControlPanel.tsx` — Deploy/Preview buttons + WS connection status
-- `Timeline.tsx` — deploy history list + state snapshots + rollback button
+- `ControlPanel.tsx` — Deploy/Preview buttons + WS connection status. Deploy flow: preview first → PreviewDialog → confirm → deploy → show results.
+- `PreviewDialog.tsx` — Modal overlay showing per-resource preview/deploy results. Modes: `preview` (read-only), `deploy-confirm` (with Confirm Deploy button), `deploying` (spinner), `deploy-result` (success).
+- `Timeline.tsx` — action/state history with state diffs
 - `VizControls.tsx` — renders VizInput/VizButton controls from `vizRegistry`
 
 ## Actions and Viz controls

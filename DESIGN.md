@@ -150,10 +150,10 @@ Dark-first. No light mode planned (DevOps tools live in dark terminals).
 ```
 
 - **Graph area:** flex: 1, takes remaining space
-- **Right panel:** 320-360px fixed width, scrollable, contains Timeline (always) and Preview Result (when available, shown above Timeline as a transient banner)
+- **Right panel:** 320-360px fixed width, scrollable, contains Timeline (always)
 - **Control panel:** single row, top, 40px height
 - **Legend:** bottom bar, merged with React Flow controls
-- **Preview result:** Shown as a summary banner at top of right panel: `+2 create, ~1 update, -0 delete`. Disappears on next action or deploy. Uses `--info` color for the banner border.
+- **Preview/Deploy dialog:** Centered modal overlay (480px wide) showing per-resource changes. Summary bar with `+N create` (green) / `~N update` (amber) / `-N delete` (red) / `=N same` (dim). Resource list grouped by operation. Footer: Cancel + Confirm Deploy (deploy flow) or Close (preview-only). Deploy flow: preview → confirm dialog → deploying spinner → deploy result with green border.
 
 ### Grid
 - **Approach:** Grid-disciplined
@@ -182,7 +182,7 @@ Dark-first. No light mode planned (DevOps tools live in dark terminals).
 | **ControlPanel** | Deploy button shows spinner + "Deploying..." | Normal idle state | "Deploy failed" toast/banner in `--error`, auto-dismiss 5s | "Deployed ✓" flash in `--success` on status label, 3s | WS disconnected: dot turns `--error`, label "Reconnecting..." |
 | **VizInput** | N/A (synchronous render) | Shows default value from useState | N/A | Value updates, brief accent border flash (medium) | N/A |
 | **VizButton** | Brief `--accent-muted` background during handler | N/A | Handler threw: border flashes `--error` briefly | Background flash `--accent-muted` (micro) | N/A |
-| **Preview** | Right panel shows "Running preview..." with spinner | N/A | "Preview failed: {error}" banner in `--error` | Summary banner: "+2 create, ~1 update" in `--info` | N/A |
+| **Preview** | Modal dialog: "Running pulumi up..." spinner | N/A | "Preview failed: {error}" in status bar | Modal dialog with per-resource change list, summary bar, Confirm Deploy / Close | N/A |
 | **WebSocket** | N/A | N/A | Auto-reconnect with "Reconnecting..." label | Green dot + "Connected" | Replay in progress: "Syncing..." label |
 
 ## Component Specifications
