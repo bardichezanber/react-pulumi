@@ -1,6 +1,6 @@
 {
   "name": "@react-pulumi/viz",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Visualization dashboard for React Pulumi infrastructure",
   "type": "module",
   "main": "dist/index.js",
