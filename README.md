@@ -281,9 +281,31 @@ Note: the CLI approach does not support `useState` persistence. Use `renderToPul
 
 ```bash
 react-pulumi viz infra.tsx            # launch dashboard on :3000
+react-pulumi viz infra.tsx -p 8080    # custom port
 ```
 
-The viz dashboard shows a real-time resource graph powered by React Flow, with deployment status tracking via Zustand.
+The viz dashboard renders your infrastructure as an interactive graph (React Flow + Zustand):
+- **VizInput/VizButton controls** — add `<VizInput>` and `<VizButton>` to your component to expose interactive controls in the dashboard
+- **Real-time state diffs** — every control change is logged in the Action/State History timeline
+- **Preview** — runs `pulumi preview` with current state, shows per-resource change summary in a dialog
+- **Deploy** — preview first → confirm in dialog → runs `pulumi up` → shows deploy results
+
+```tsx
+export default function App() {
+  const [replicas, setReplicas] = useState(2);
+  return (
+    <>
+      <VizInput name="replicas" label="Replicas" inputType="number"
+        value={replicas} setValue={setReplicas} min={1} max={10} />
+      <VizButton name="scale-up" label="Scale Up"
+        handler={() => setReplicas(n => Math.min(10, n + 1))} />
+      {Array.from({ length: replicas }, (_, i) => (
+        <Instance key={`web-${i}`} name={`web-${i}`} />
+      ))}
+    </>
+  );
+}
+```
 
 ## Roadmap
 
@@ -298,8 +320,10 @@ The viz dashboard shows a real-time resource graph powered by React Flow, with d
 - [x] Persistent `useState` via `Pulumi.<stack>.yaml`
 - [x] `react-pulumi` CLI (`up`, `preview`, `destroy`, `viz`)
 - [x] Viz dashboard (React Flow graph + Zustand store)
+- [x] `VizInput` / `VizButton` — interactive controls in the viz dashboard
+- [x] Preview/Deploy from viz dashboard (real `pulumi preview` / `pulumi up` via Automation API)
+- [x] State middleware pipeline (persistence, broadcast, action log)
 - [ ] `react-pulumi serve` — daemon mode with re-render loop
-- [ ] Actions trigger `setState` → re-render → deploy
 - [ ] `useReducer` persistence
 - [x] `useConfig()` — read Pulumi stack config as a hook
 - [x] `useStackOutput()` — cross-stack references
@@ -321,6 +345,7 @@ See [docs/plan-serve-mode.md](docs/plan-serve-mode.md) for detailed design.
 - **React Flow** (`@xyflow/react`) — graph visualization
 - **Zustand** — state management for viz
 - **Vitest** — testing
+- **Biome** — linting + formatting
 
 ## License
 

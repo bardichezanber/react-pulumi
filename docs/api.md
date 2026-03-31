@@ -254,6 +254,47 @@ function App() {
 
 ---
 
+### `<VizInput>`
+
+Registers an interactive input control in the viz dashboard. Renders nothing in the component tree — registration happens synchronously during render.
+
+```tsx
+import { VizInput } from "@react-pulumi/core";
+
+const [replicas, setReplicas] = useState(2);
+<VizInput name="replicas" label="Replicas" inputType="number"
+  value={replicas} setValue={setReplicas} min={1} max={10} />
+```
+
+**Props:**
+- `name` — control identifier (unique)
+- `label` *(optional)* — display label in the dashboard
+- `inputType` — `"text"` | `"number"` | `"range"`
+- `value` — current value (from `useState`)
+- `setValue` — setter function (from `useState`)
+- `min`, `max`, `step` *(optional)* — constraints for number/range inputs
+
+---
+
+### `<VizButton>`
+
+Registers a clickable button in the viz dashboard. Renders nothing — triggers a handler when clicked.
+
+```tsx
+import { VizButton } from "@react-pulumi/core";
+
+<VizButton name="scale-up" label="Scale Up (+1)"
+  handler={() => setReplicas(n => Math.min(10, n + 1))} />
+```
+
+**Props:**
+- `name` — control identifier (unique)
+- `label` *(optional)* — button text in the dashboard
+- `description` *(optional)* — tooltip text
+- `handler` — callback function triggered on click
+
+---
+
 ## Resource Options (`opts` prop)
 
 Any wrapped Pulumi resource accepts an `opts` prop for Pulumi resource options:
