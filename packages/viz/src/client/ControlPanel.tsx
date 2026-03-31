@@ -15,8 +15,18 @@ export function ControlPanel() {
 
   const isOperating = status === "deploying" || status === "previewing";
 
-  // Count user-initiated actions (VizButton clicks, VizInput edits)
-  const pendingCount = actions.length;
+  // Count state keys that differ from the initial state (first action's stateBefore).
+  // This represents actual pending changes, not total action count.
+  // e.g. scale-up then scale-down = 0 pending changes (state returned to initial).
+  let pendingCount = 0;
+  if (actions.length > 0) {
+    const initial = actions[0].stateBefore; // oldest action's before = initial state
+    const current = actions[actions.length - 1].stateAfter; // newest action's after = current state
+    const allKeys = new Set([...Object.keys(initial), ...Object.keys(current)]);
+    for (const k of allKeys) {
+      if (initial[k] !== current[k]) pendingCount++;
+    }
+  }
 
   const handleDeploy = useCallback(async () => {
     setError(null);
@@ -62,7 +72,7 @@ export function ControlPanel() {
           cursor: isOperating ? "not-allowed" : "pointer", opacity: isOperating ? 0.5 : 1,
         }}
       >
-        {isOperating ? "Deploying..." : pendingCount > 0 ? `Deploy (${pendingCount} changes)` : "Deploy"}
+        {isOperating ? "Deploying..." : pendingCount > 0 ? `Deploy (${pendingCount} ${pendingCount === 1 ? "change" : "changes"})` : "Deploy"}
       </button>
 
       {/* Preview button */}
