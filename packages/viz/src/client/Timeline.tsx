@@ -60,16 +60,16 @@ export function Timeline() {
       .catch(() => {});
   }, []);
 
-  // Also refresh after WS action_entry events
+  // Refresh after WS action_entry events or deploy status changes
   const actions = useInfraStore((s) => s.actions);
+  const deploymentStatus = useInfraStore((s) => s.deploymentStatus);
   useEffect(() => {
-    if (actions.length > 0) {
-      fetch("/api/viz-history")
-        .then((r) => r.json())
-        .then((data: { entries: VizHistoryEntry[] }) => setHistory(data.entries))
-        .catch(() => {});
-    }
-  }, [actions.length]);
+    // Refresh when actions change or deploy completes (status returns to idle after deploying)
+    fetch("/api/viz-history")
+      .then((r) => r.json())
+      .then((data: { entries: VizHistoryEntry[] }) => setHistory(data.entries))
+      .catch(() => {});
+  }, [actions.length, deploymentStatus]);
 
   const handleEntryClick = useCallback(async (entry: VizHistoryEntry) => {
     // Toggle off if clicking the same entry

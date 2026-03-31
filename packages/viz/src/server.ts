@@ -257,6 +257,7 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
         await onRollback(body.stateSnapshot);
         wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
       } catch (err) {
+        wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
         wsBroadcaster?.broadcast({ type: "error", message: err instanceof Error ? err.message : String(err) });
       } finally {
         busy = false;
