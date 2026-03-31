@@ -184,9 +184,9 @@ Browser-side `useWebSocket` hook. Auto-reconnects on close (2s interval). Dispat
 - `Timeline.tsx` — action/state history with state diffs
 - `VizControls.tsx` — renders VizInput/VizButton controls from `vizRegistry`
 
-## Actions and Viz controls
+## Viz controls
 
-`<Action name="scale-up" handler={fn} />` registers in `actionRegistry`. `<VizInput>` and `<VizButton>` register in `vizRegistry` — these render as controllable UI in the viz dashboard. `vizRegistry` is analogous to `actionRegistry` (module-level Map). `vizRegistry.lock()`/`unlock()` prevents React 19's ConcurrentRoot deferred re-renders from overwriting correct intercepted setters with stale-indexed ones (used by `viz.ts` after each synchronous render).
+`<VizInput>` and `<VizButton>` register in `vizRegistry` — these render as controllable UI in the viz dashboard. `vizRegistry` is a module-level Map. `vizRegistry.lock()`/`unlock()` prevents React 19's ConcurrentRoot deferred re-renders from overwriting correct intercepted setters with stale-indexed ones (used by `viz.ts` after each synchronous render).
 
 ## Design System
 Always read DESIGN.md before making any visual or UI decisions.

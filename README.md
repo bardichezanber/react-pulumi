@@ -28,6 +28,27 @@ renderToPulumi(App)();
 pulumi up   # standard Pulumi CLI — useState persists to Pulumi.<stack>.yaml
 ```
 
+## Why this project
+
+IaC tools — Terraform, Pulumi, CloudFormation — all follow the same paradigm: **declare the desired state, let the engine compute the diff, apply it.** This works well for describing *what* the infrastructure should look like, but it says nothing about *how* to get there.
+
+What's missing is **state transition management** — the ability to programmatically describe, inspect, and control the *changes* between infrastructure states. Questions like:
+
+- What states has my infrastructure been through?
+- Can I go back to a previous state and redeploy?
+- If I change this variable, what resources are affected before I deploy?
+- Can I visualize the state change history and diff between any two points?
+
+React's entire purpose is managing state transitions — `useState`, `useReducer`, component lifecycle, and a mature ecosystem of state tools (Redux DevTools time travel, Zustand devtools, etc.). By building a React reconciler for Pulumi, we get:
+
+1. **Composition** — infrastructure as composable components, not monolithic templates
+2. **State management** — `useState` persists across deployments, enabling stateful infrastructure that remembers its configuration history
+3. **State visualization** — the viz dashboard shows the resource graph, state timeline, and pending changes in real time
+4. **Time machine** — every state mutation is logged; you can preview any historical state and roll back to it
+5. **Ecosystem leverage** — Zustand devtools middleware feeds infrastructure state into Redux DevTools. The same time travel, state inspection, and replay tools that frontend developers use for UI state now work for cloud infrastructure
+
+This isn't "JSX syntax sugar for IaC." It's bringing React's state management paradigm — and its entire ecosystem — to infrastructure.
+
 ## How it works
 
 1. **`pulumiToComponent`** wraps Pulumi resource classes as React FCs that return `[Component, Context]`
@@ -35,6 +56,7 @@ pulumi up   # standard Pulumi CLI — useState persists to Pulumi.<stack>.yaml
 3. **Context** provides resource instances to descendants — `useContext(VcnCtx)` reads the nearest ancestor
 4. **Pulumi engine** diffs against cloud state and applies changes
 5. **State persistence** — `useState` values are saved to `Pulumi.<stack>.yaml` config via a dynamic resource
+6. **Middleware pipeline** — every `useState` change flows through pluggable middleware (persistence, action log, broadcast) enabling time travel, viz sync, and DevTools integration
 
 React handles composition, conditional logic, loops, and component reuse. Pulumi handles the actual cloud diffing and deployment.
 
@@ -42,9 +64,9 @@ React handles composition, conditional logic, loops, and component reuse. Pulumi
 
 | Package | Description |
 |---------|-------------|
-| `@react-pulumi/core` | React reconciler, resource tree, Pulumi bridge, `renderToPulumi` |
+| `@react-pulumi/core` | React reconciler, resource tree, Pulumi bridge, `renderToPulumi`, state middleware |
 | `@react-pulumi/cli` | CLI commands: `up`, `preview`, `destroy`, `viz` |
-| `@react-pulumi/viz` | Web dashboard with resource graph visualization |
+| `@react-pulumi/viz` | Web dashboard with resource graph, state timeline, deploy controls, time machine |
 
 ## Getting Started
 
@@ -252,19 +274,31 @@ function App() {
 
 `useState` values persist to `Pulumi.<stack>.yaml` between `pulumi up` runs. Component structure changes (adding/removing/reordering hooks) trigger a warning and fall back to defaults.
 
-## Using the CLI (alternative)
+## Using the CLI
 
 Instead of `renderToPulumi` + `pulumi up`, you can use the react-pulumi CLI with a simpler export-based entry point:
 
 ```tsx
 // infra.tsx — just export a component, no setPulumiSDK needed
-import { pulumiToComponent } from "@react-pulumi/core";
+import { pulumiToComponent, VizInput, VizButton } from "@react-pulumi/core";
 import * as random from "@pulumi/random";
+import { useState } from "react";
 
 const [RandomPet] = pulumiToComponent(random.RandomPet);
 
 export default function App() {
-  return <RandomPet name="my-pet" length={3} />;
+  const [count, setCount] = useState(2);
+  return (
+    <>
+      <VizInput name="count" label="Pet Count" inputType="number"
+        value={count} setValue={setCount} min={1} max={10} />
+      <VizButton name="add" label="Add Pet"
+        handler={() => setCount(n => Math.min(10, n + 1))} />
+      {Array.from({ length: count }, (_, i) => (
+        <RandomPet key={`pet-${i}`} name={`pet-${i}`} length={3} />
+      ))}
+    </>
+  );
 }
 ```
 
@@ -275,7 +309,7 @@ react-pulumi preview infra.tsx        # preview changes
 react-pulumi destroy infra.tsx        # tear down
 ```
 
-Note: the CLI approach does not support `useState` persistence. Use `renderToPulumi` for stateful components.
+The CLI reads `Pulumi.yaml` from the entry file's directory. If one doesn't exist, it auto-creates it.
 
 ## Visualization
 
@@ -284,57 +318,38 @@ react-pulumi viz infra.tsx            # launch dashboard on :3000
 react-pulumi viz infra.tsx -p 8080    # custom port
 ```
 
-The viz dashboard renders your infrastructure as an interactive graph (React Flow + Zustand):
-- **VizInput/VizButton controls** — add `<VizInput>` and `<VizButton>` to your component to expose interactive controls in the dashboard
-- **Real-time state diffs** — every control change is logged in the Action/State History timeline
-- **Preview** — runs `pulumi preview` with current state, shows per-resource change summary in a dialog
-- **Deploy** — preview first → confirm in dialog → runs `pulumi up` → shows deploy results
+The viz dashboard is an interactive infrastructure control console:
 
-```tsx
-export default function App() {
-  const [replicas, setReplicas] = useState(2);
-  return (
-    <>
-      <VizInput name="replicas" label="Replicas" inputType="number"
-        value={replicas} setValue={setReplicas} min={1} max={10} />
-      <VizButton name="scale-up" label="Scale Up"
-        handler={() => setReplicas(n => Math.min(10, n + 1))} />
-      {Array.from({ length: replicas }, (_, i) => (
-        <Instance key={`web-${i}`} name={`web-${i}`} />
-      ))}
-    </>
-  );
-}
-```
+- **Resource graph** — React Flow visualization of your infrastructure tree with deployment status indicators (green = deployed, amber = in progress, gray = pending)
+- **Ghost nodes** — resources removed from code but still deployed appear as semi-transparent nodes with strikethrough names, showing exactly what will be deleted on next deploy
+- **VizInput/VizButton controls** — interactive controls declared in JSX appear as editable nodes in the graph
+- **Action/State History** — every state mutation is logged with diffs; deploy markers show which state is live
+- **Preview/Deploy** — runs real `pulumi preview` / `pulumi up` via Automation API, shows per-resource change summary
+- **Time machine** — click any history entry to preview that state; "Rollback to this" redeploys with historical values using current code
 
 ## Roadmap
 
 - [x] React reconciler + resource tree
-- [x] Pulumi bridge (`materializeTree` — legacy host-component path)
-- [x] `pulumiToComponent` returns `[Component, Context]` — render-time resource creation + Context
-- [x] Cross-resource Output wiring via `useContext`
-- [x] Render props mode: `<Vcn>{(vcn) => <Subnet vcnId={vcn.id} />}</Vcn>`
+- [x] `pulumiToComponent` — `[Component, Context]` with render-time resource creation
+- [x] Cross-resource Output wiring via `useContext` + render props
 - [x] Provider scoping (`<AwsProvider>` context propagation)
 - [x] `<Group>` for Pulumi ComponentResource
 - [x] `renderToPulumi` — standard `pulumi up` compatibility
 - [x] Persistent `useState` via `Pulumi.<stack>.yaml`
 - [x] `react-pulumi` CLI (`up`, `preview`, `destroy`, `viz`)
-- [x] Viz dashboard (React Flow graph + Zustand store)
-- [x] `VizInput` / `VizButton` — interactive controls in the viz dashboard
-- [x] Preview/Deploy from viz dashboard (real `pulumi preview` / `pulumi up` via Automation API)
 - [x] State middleware pipeline (persistence, broadcast, action log)
-- [ ] `react-pulumi serve` — daemon mode with re-render loop
-- [ ] `useReducer` persistence
+- [x] Viz dashboard (resource graph + state timeline + deploy controls)
+- [x] `VizInput` / `VizButton` — interactive controls in the graph
+- [x] Resource deployment status indicators + ghost nodes
+- [x] Persistent history + time machine with code change detection
 - [x] `useConfig()` — read Pulumi stack config as a hook
 - [x] `useStackOutput()` — cross-stack references
+- [ ] `useReducer` persistence
 - [ ] `useEffect` / `useDeployEffect` — post-deploy side effects
 - [ ] `useSignal()` — webhook-driven state changes
 - [ ] `useCron()` — time-based infrastructure
 - [ ] `useMetric()` — metric-driven auto-scaling
 - [ ] Deploy queue with serialization + debounce
-- [ ] Preview gate + auto-apply safety rails
-
-See [docs/plan-serve-mode.md](docs/plan-serve-mode.md) for detailed design.
 
 ## Tech stack
 
@@ -343,7 +358,7 @@ See [docs/plan-serve-mode.md](docs/plan-serve-mode.md) for detailed design.
 - **TypeScript** — strict mode, ESM
 - **pnpm workspaces** + **Turborepo** — monorepo tooling
 - **React Flow** (`@xyflow/react`) — graph visualization
-- **Zustand** — state management for viz
+- **Zustand** — state management for viz (with Redux DevTools integration)
 - **Vitest** — testing
 - **Biome** — linting + formatting
 

@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { Action } from "./components/Action.js";
 import { reconciler } from "./reconciler.js";
 import {
   createComponentNode,
@@ -53,32 +52,19 @@ function buildTreeFromFiber(fiberRoot: FiberRoot): ResourceNode {
       fiber.tag === ForwardRef ||
       fiber.tag === SimpleMemoComponent
     ) {
-      // Detect <Action> components — render as action nodes, not component groups
-      if (fiber.type === Action) {
-        const props = (fiber as unknown as { memoizedProps?: Record<string, unknown> })
+      const fnType = fiber.type as { displayName?: string; name?: string } | null;
+      const name = fnType?.displayName ?? fnType?.name;
+      if (name) {
+        const compNode = createComponentNode(name);
+        // Store the resource logical name from JSX props for status mapping
+        const fiberProps = (fiber as unknown as { memoizedProps?: Record<string, unknown> })
           .memoizedProps;
-        const actionName = (props?.name as string) ?? "action";
-        const actionNode = createComponentNode(actionName);
-        actionNode.kind = "action";
-        if (props?.description) actionNode.meta.description = props.description as string;
-        actionNode.parent = parent;
-        parent.children.push(actionNode);
-        // Actions have no children to recurse into
-      } else {
-        const fnType = fiber.type as { displayName?: string; name?: string } | null;
-        const name = fnType?.displayName ?? fnType?.name;
-        if (name) {
-          const compNode = createComponentNode(name);
-          // Store the resource logical name from JSX props for status mapping
-          const fiberProps = (fiber as unknown as { memoizedProps?: Record<string, unknown> })
-            .memoizedProps;
-          if (fiberProps?.name) {
-            compNode.meta.resourceName = fiberProps.name as string;
-          }
-          compNode.parent = parent;
-          parent.children.push(compNode);
-          target = compNode;
+        if (fiberProps?.name) {
+          compNode.meta.resourceName = fiberProps.name as string;
         }
+        compNode.parent = parent;
+        parent.children.push(compNode);
+        target = compNode;
       }
     } else if (fiber.tag === HostComponent) {
       // fiber.stateNode is the ResourceNode created by the reconciler's createInstance

@@ -1,14 +1,12 @@
-import { basename, resolve } from "node:path";
 import { createElement } from "react";
+import { resolveProject } from "../project.js";
 
 interface UpOptions {
   stack: string;
-  cwd?: string;
 }
 
 export async function up(entry: string, opts: UpOptions): Promise<void> {
-  const entryPath = resolve(entry);
-  const projectName = basename(process.cwd());
+  const { projectDir, projectName, entryPath } = resolveProject(entry);
 
   console.log(`[react-pulumi] Loading ${entryPath}...`);
 
@@ -25,16 +23,19 @@ export async function up(entry: string, opts: UpOptions): Promise<void> {
   const { renderToResourceTree, setPulumiSDK } = await import("@react-pulumi/core");
   setPulumiSDK(pulumi);
 
-  const stack = await LocalWorkspace.createOrSelectStack({
-    projectName,
-    stackName: opts.stack,
-    program: async () => {
-      const element = createElement(App);
-      // Resources are created at render time (as side effects of FC components
-      // returned by pulumiToComponent), no separate materializeTree step needed.
-      renderToResourceTree(element);
+  const stack = await LocalWorkspace.createOrSelectStack(
+    {
+      projectName,
+      stackName: opts.stack,
+      program: async () => {
+        const element = createElement(App);
+        // Resources are created at render time (as side effects of FC components
+        // returned by pulumiToComponent), no separate materializeTree step needed.
+        renderToResourceTree(element);
+      },
     },
-  });
+    { workDir: projectDir },
+  );
 
   console.log(`[react-pulumi] Running 'up' on stack '${opts.stack}'...`);
 

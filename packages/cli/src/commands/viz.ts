@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { basename, resolve } from "node:path";
 import { createElement } from "react";
+import { resolveProject } from "../project.js";
 
 interface VizOptions {
   port: string;
@@ -8,8 +8,9 @@ interface VizOptions {
 }
 
 export async function viz(entry: string, opts: VizOptions): Promise<void> {
-  const entryPath = resolve(entry);
+  const { projectDir, projectName, entryPath } = resolveProject(entry);
   const port = parseInt(opts.port, 10);
+  const stackName = opts.stack ?? "dev";
 
   console.log(`[react-pulumi] Loading ${entryPath}...`);
 
@@ -35,24 +36,12 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
   const middlewares = [persistence, broadcast];
 
   // Install interceptor ONCE and keep it installed permanently.
-  // React 19's ConcurrentRoot runs deferred work after flushSyncWork() —
-  // if we cleanup the interceptor between renders, the deferred re-render
-  // creates plain (non-intercepted) setters that overwrite the registry entries,
-  // breaking state persistence for subsequent invocations.
   loadState({ keys: [], values: [] });
   resetMiddlewareState(randomUUID());
   const cleanupInterceptor = installInterceptor({ middlewares });
 
   let isFirstRender = true;
 
-  /**
-   * Render the app with interceptor + middleware pipeline.
-   * State persists between renders via prepareForRerender().
-   *
-   * Interceptor stays installed permanently — deferred React work after
-   * flushSyncWork() will re-render with the intercepted useState, ensuring
-   * VizButton/VizInput always capture intercepted setters.
-   */
   function renderApp() {
     vizRegistry.unlock();
     vizRegistry.reset();
@@ -64,10 +53,6 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     }
 
     const result = renderToResourceTree(createElement(App), { returnFiberRoot: true });
-
-    // Lock the registry after the synchronous render. React 19's ConcurrentRoot
-    // may run deferred work that re-renders components — those deferred renders
-    // would create setters with wrong hook indices that overwrite the correct ones.
     vizRegistry.lock();
 
     return result.tree;
@@ -78,10 +63,6 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
 
   // ── Load resource statuses from Pulumi stack state ──
 
-  /**
-   * Parse a Pulumi URN into a type::name key for matching against the resource tree.
-   * URN format: urn:pulumi:<stack>::<project>::<type>::<name>
-   */
   function urnToKey(urn: string): string | null {
     const parts = urn.split("::");
     if (parts.length < 4) return null;
@@ -93,14 +74,11 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
   async function loadResourceStatuses(): Promise<Record<string, string>> {
     try {
       const { LocalWorkspace } = await import("@pulumi/pulumi/automation/index.js");
-      const projectName = basename(process.cwd());
-      const stackName = opts.stack ?? "dev";
 
-      const stack = await LocalWorkspace.createOrSelectStack({
-        projectName,
-        stackName,
-        program: async () => {},
-      });
+      const stack = await LocalWorkspace.createOrSelectStack(
+        { projectName, stackName, program: async () => {} },
+        { workDir: projectDir },
+      );
 
       const state = await stack.exportStack();
       const resources = (state as any)?.deployment?.resources;
@@ -114,7 +92,6 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
       }
       return statuses;
     } catch {
-      // Stack doesn't exist yet or Pulumi not configured — return empty
       return {};
     }
   }
@@ -127,15 +104,13 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
       console.log(`[react-pulumi] Loaded ${count} resource statuses from stack state`);
     }
   } catch {
-    // Non-fatal — statuses will just be empty
+    // Non-fatal
   }
 
   // ── Viz History Store ──
-  const projectDir = process.cwd();
   const historyStore = new VizHistoryStore(projectDir);
   historyStore.load();
 
-  // Snapshot initial state from viz controls
   function snapshotControlState(): Record<string, unknown> {
     const snap: Record<string, unknown> = {};
     for (const ctrl of vizRegistry.list()) {
@@ -146,7 +121,6 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     return snap;
   }
 
-  // Record initial render
   historyStore.append({
     id: randomUUID(),
     entryType: "initial",
@@ -168,26 +142,21 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     historyStore,
   });
 
-  // Wire broadcast function to WebSocket server
   if (server.wsBroadcaster) {
     broadcastFn = (data) => server.wsBroadcaster!.broadcastRaw(data);
   }
 
-  // Invoke a viz control in the CLI module context (avoids cross-module issues)
   server.onInvoke = async (name: string, value?: unknown) => {
     await vizRegistry.invoke(name, value);
   };
 
-  // Lightweight re-render after viz control change (updates tree + controls)
   server.onRerender = async () => {
     tree = renderApp();
     server.updateTree(tree);
     return { controls: vizRegistry.list() };
   };
 
-  // Rollback: inject historical state via controls, then deploy
   server.onRollback = async (targetState: { keys: string[]; values: unknown[] }) => {
-    // Apply each state value to its corresponding viz control
     for (let i = 0; i < targetState.keys.length; i++) {
       const name = targetState.keys[i];
       const value = targetState.values[i];
@@ -196,9 +165,8 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     tree = renderApp();
     server.updateTree(tree);
 
-    // Deploy with the rolled-back state
-    const { stack, stackName } = await createStack();
-    console.log(`[react-pulumi] Rolling back stack '${stackName}'...`);
+    const { stack, stackName: sn } = await createStack();
+    console.log(`[react-pulumi] Rolling back stack '${sn}'...`);
 
     const resourceChanges: Array<{ op: string; type: string; name: string }> = [];
     const result = await stack.up({
@@ -216,25 +184,20 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     return result;
   };
 
-  // Time-travel: re-render with historical state, then restore live state
   server.onTimeTravel = async (stateSnapshot: Record<string, unknown>) => {
-    // Save current live state
     const liveState = snapshotControlState();
 
-    // Inject historical state via viz control setters
     for (const [name, value] of Object.entries(stateSnapshot)) {
       await vizRegistry.invoke(name, value);
     }
 
-    // Re-render with historical state
     const historicalTree = renderApp();
     const treeHash = computeTreeHash(historicalTree);
 
-    // Restore live state
     for (const [name, value] of Object.entries(liveState)) {
       await vizRegistry.invoke(name, value);
     }
-    renderApp(); // Re-render to restore live tree
+    renderApp();
 
     return { tree: historicalTree, treeHash };
   };
@@ -246,23 +209,26 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     const { setPulumiSDK } = await import("@react-pulumi/core");
     setPulumiSDK(pulumi);
 
-    const projectName = basename(process.cwd());
-    const stackName = opts.stack ?? "dev";
-
-    // Snapshot current viz state so the Pulumi program renders with it
     prepareForRerender();
+    const snapshotTree = renderToResourceTree(createElement(App), { returnFiberRoot: true });
+    const hookKeys = collectHookKeys(snapshotTree.fiberRoot);
+    const { collectState } = await import("@react-pulumi/core");
+    const stateSnapshot = collectState(hookKeys);
 
-    const stack = await LocalWorkspace.createOrSelectStack({
-      projectName,
-      stackName,
-      program: async () => {
-        renderToResourceTree(createElement(App));
+    const stack = await LocalWorkspace.createOrSelectStack(
+      {
+        projectName,
+        stackName,
+        program: async () => {
+          loadState(stateSnapshot);
+          renderToResourceTree(createElement(App));
+        },
       },
-    });
+      { workDir: projectDir },
+    );
     return { stack, stackName };
   }
 
-  // Parse Pulumi output lines into structured resource changes + broadcast status
   function parseOutputLine(
     out: string,
     changes: Array<{ op: string; type: string; name: string }>,
@@ -274,17 +240,15 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
       const op = symbol === "+" ? "create" : symbol === "~" ? "update" : "delete";
       changes.push({ op, type, name });
 
-      // Broadcast real-time resource status
       const key = `${type}::${name}`;
       const status = op === "create" ? "creating" : op === "update" ? "updating" : "deleting";
       server.wsBroadcaster?.broadcast({ type: "resource_status", key, status });
     }
   }
 
-  // Real pulumi preview — runs stack.preview() with current viz state
   server.onPreview = async () => {
-    const { stack, stackName } = await createStack();
-    console.log(`[react-pulumi] Running preview on stack '${stackName}'...`);
+    const { stack, stackName: sn } = await createStack();
+    console.log(`[react-pulumi] Running preview on stack '${sn}'...`);
 
     const resourceChanges: Array<{ op: string; type: string; name: string }> = [];
     const result = await stack.preview({
@@ -303,17 +267,15 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     };
   };
 
-  // Real pulumi deploy — runs stack.up() with current viz state
   server.onDeploy = async () => {
-    const { stack, stackName } = await createStack();
-    console.log(`[react-pulumi] Deploying stack '${stackName}'...`);
+    const { stack, stackName: sn } = await createStack();
+    console.log(`[react-pulumi] Deploying stack '${sn}'...`);
 
     const resourceChanges: Array<{ op: string; type: string; name: string }> = [];
     const result = await stack.up({
       onOutput: (out: string) => parseOutputLine(out, resourceChanges),
     });
 
-    // Refresh statuses from stack state after deploy
     try {
       const postDeployStatuses = await loadResourceStatuses();
       server.updateResourceStatuses(postDeployStatuses);

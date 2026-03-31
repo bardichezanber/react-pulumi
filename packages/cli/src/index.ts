@@ -22,7 +22,6 @@ program
   .description("Deploy infrastructure defined in JSX/TSX")
   .argument("<entry>", "Path to the entry TSX file")
   .option("-s, --stack <name>", "Stack name", "dev")
-  .option("--cwd <dir>", "Working directory for the Pulumi project")
   .action(up);
 
 program
@@ -30,7 +29,6 @@ program
   .description("Preview infrastructure changes")
   .argument("<entry>", "Path to the entry TSX file")
   .option("-s, --stack <name>", "Stack name", "dev")
-  .option("--cwd <dir>", "Working directory for the Pulumi project")
   .action(preview);
 
 program
@@ -38,7 +36,6 @@ program
   .description("Destroy deployed infrastructure")
   .argument("<entry>", "Path to the entry TSX file")
   .option("-s, --stack <name>", "Stack name", "dev")
-  .option("--cwd <dir>", "Working directory for the Pulumi project")
   .action(destroy);
 
 program

@@ -29,6 +29,26 @@ Nodes created by `pulumiToComponent` — the actual cloud resources.
 - **Background:** `--surface`
 - **Text:** type token in `--text-muted`, name in `--text`
 
+### Ghost Resources (Pending Deletion)
+Resources that are **deployed** (exist in Pulumi state) but **no longer in the current tree** (removed by a state change). These stay visible so the user sees exactly what will be deleted on next deploy.
+
+```
+┌─────────────────────────────┐
+│ aws:ec2/instance:Instance   │  ← type token (dim)     🔴
+│ ̶p̶r̶o̶d̶u̶c̶t̶i̶o̶n̶-̶w̶e̶b̶-̶1̶            │  ← name (strikethrough, dim)
+└─────────────────────────────┘
+    entire node at 40% opacity
+```
+- **Opacity:** 0.4 on the entire node container
+- **Border:** 1px dashed `--error` (dashed = not solid/live, red = will be removed)
+- **Background:** `--surface`
+- **Name text:** `--text-dim`, `text-decoration: line-through`
+- **Type token text:** `--text-dim`
+- **Status dot:** `--error`, static (indicates pending deletion)
+- **Position:** appended after all live nodes at the same depth as the parent they were under, or at root level if parent is also gone
+- **Edge:** dashed `--error` at 30% opacity connecting to former parent (if parent still exists)
+- **Not interactive:** ghost nodes cannot be clicked, edited, or expanded. They are read-only visual indicators.
+
 ### Component Wrappers
 React components from `pulumiToComponent` that have children (VPC, Subnet).
 
@@ -244,8 +264,14 @@ Actions below the marker are **deployed** (live in cloud).
 ### Resource Node (React Flow)
 - Min width: 200px
 - Padding: 6px 12px
-- Type token: `--text-xs`, monospace, `--text-muted`
-- Name: `--text-base`, font-weight 500
+- Type token: `--text-xs`, monospace, `--text-muted` (e.g., `oci:core/vcn:Vcn`)
+- Resource name: `--text-base`, font-weight 500 (the JSX `name` prop, e.g., `"main"`)
+- Status dot: 6px circle, top-right corner, color per deployment status
+  - `created`/`updated` → `--success`, static
+  - `creating`/`updating` → `--warning`, pulse animation
+  - `deleting` → `--error`, pulse
+  - `deleted`/`failed` → `--error`, static
+  - No status (pending) → `--text-dim`, static
 
 ### VizInput Node (React Flow)
 - Same dimensions as resource node
