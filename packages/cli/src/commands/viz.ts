@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { createElement } from "react";
 
 interface VizOptions {
@@ -60,7 +60,7 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     if (isFirstRender) {
       isFirstRender = false;
     } else {
-      prepareForRerender(); // reset hookCounter, feed back pendingValues as persisted
+      prepareForRerender();
     }
 
     const result = renderToResourceTree(createElement(App), { returnFiberRoot: true });
@@ -97,11 +97,92 @@ export async function viz(entry: string, opts: VizOptions): Promise<void> {
     await vizRegistry.invoke(name, value);
   };
 
-  // Re-render after viz control invocation (state persists via prepareForRerender)
-  server.onPreview = async () => {
+  // Lightweight re-render after viz control change (updates tree + controls)
+  server.onRerender = async () => {
     tree = renderApp();
     server.updateTree(tree);
     return { controls: vizRegistry.list() };
+  };
+
+  // Shared: create a Pulumi stack with the current viz state
+  async function createStack() {
+    const { LocalWorkspace } = await import("@pulumi/pulumi/automation/index.js");
+    const pulumi = await import("@pulumi/pulumi");
+    const { setPulumiSDK } = await import("@react-pulumi/core");
+    setPulumiSDK(pulumi);
+
+    const projectName = basename(process.cwd());
+    const stackName = opts.stack ?? "dev";
+
+    // Snapshot current viz state so the Pulumi program renders with it
+    prepareForRerender();
+
+    const stack = await LocalWorkspace.createOrSelectStack({
+      projectName,
+      stackName,
+      program: async () => {
+        renderToResourceTree(createElement(App));
+      },
+    });
+    return { stack, stackName };
+  }
+
+  // Parse Pulumi output lines into structured resource changes
+  function parseOutputLine(
+    out: string,
+    changes: Array<{ op: string; type: string; name: string }>,
+  ) {
+    process.stdout.write(out);
+    const match = out.match(/^\s+([+~-])\s+(\S+)\s+(\S+)\s+(create|update|delete|same)/);
+    if (match) {
+      const [, symbol, type, name] = match;
+      const op = symbol === "+" ? "create" : symbol === "~" ? "update" : "delete";
+      changes.push({ op, type, name });
+    }
+  }
+
+  // Real pulumi preview — runs stack.preview() with current viz state
+  server.onPreview = async () => {
+    const { stack, stackName } = await createStack();
+    console.log(`[react-pulumi] Running preview on stack '${stackName}'...`);
+
+    const resourceChanges: Array<{ op: string; type: string; name: string }> = [];
+    const result = await stack.preview({
+      onOutput: (out: string) => parseOutputLine(out, resourceChanges),
+    });
+
+    prepareForRerender();
+
+    const summary = result.changeSummary ?? {};
+    return {
+      create: summary.create ?? 0,
+      update: summary.update ?? 0,
+      delete: (summary as Record<string, number>).delete ?? 0,
+      same: summary.same ?? 0,
+      resources: resourceChanges,
+    };
+  };
+
+  // Real pulumi deploy — runs stack.up() with current viz state
+  server.onDeploy = async () => {
+    const { stack, stackName } = await createStack();
+    console.log(`[react-pulumi] Deploying stack '${stackName}'...`);
+
+    const resourceChanges: Array<{ op: string; type: string; name: string }> = [];
+    const result = await stack.up({
+      onOutput: (out: string) => parseOutputLine(out, resourceChanges),
+    });
+
+    prepareForRerender();
+
+    const summary = result.summary.resourceChanges ?? {};
+    return {
+      create: (summary as Record<string, number>).create ?? 0,
+      update: (summary as Record<string, number>).update ?? 0,
+      delete: (summary as Record<string, number>).delete ?? 0,
+      same: (summary as Record<string, number>).same ?? 0,
+      resources: resourceChanges,
+    };
   };
 
   console.log(`[react-pulumi] Viz dashboard ready at http://localhost:${server.port}`);

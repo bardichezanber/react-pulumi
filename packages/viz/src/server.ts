@@ -55,6 +55,8 @@ export interface VizServer {
   onRollback: ((targetState: { keys: string[]; values: unknown[] }) => Promise<unknown>) | null;
   /** Set by CLI layer to invoke a viz control (runs in CLI module context) */
   onInvoke: ((name: string, value?: unknown) => Promise<void>) | null;
+  /** Lightweight re-render after viz control change (NOT pulumi preview) */
+  onRerender: (() => Promise<unknown>) | null;
 }
 
 export async function startVizServer(opts: VizServerOptions): Promise<VizServer> {
@@ -85,6 +87,7 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
   let onPreview: (() => Promise<unknown>) | null = null;
   let onRollback: ((targetState: { keys: string[]; values: unknown[] }) => Promise<unknown>) | null = null;
   let onInvoke: ((name: string, value?: unknown) => Promise<void>) | null = null;
+  let onRerender: (() => Promise<unknown>) | null = null;
 
   // In production, serve pre-built client from dist/client/
   const clientDir = join(__dirname, "client");
@@ -162,13 +165,13 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
       if (!onDeploy) { json(501, { error: "Deploy not configured" }); return; }
       busy = true;
       wsBroadcaster?.broadcast({ type: "status_update", status: "deploying" });
-      res.writeHead(202, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "accepted" }));
       try {
-        await onDeploy();
+        const result = await onDeploy();
         wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
+        json(200, { result });
       } catch (err) {
-        wsBroadcaster?.broadcast({ type: "error", message: err instanceof Error ? err.message : String(err) });
+        wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
+        json(500, { error: err instanceof Error ? err.message : String(err) });
       } finally {
         busy = false;
       }
@@ -176,12 +179,18 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
     }
 
     if (url.pathname === "/api/preview" && req.method === "POST") {
+      if (busy) { json(409, { error: "Operation in progress" }); return; }
       if (!onPreview) { json(501, { error: "Preview not configured" }); return; }
+      busy = true;
+      wsBroadcaster?.broadcast({ type: "status_update", status: "previewing" });
       try {
         const result = await onPreview();
         json(200, { result });
       } catch (err) {
         json(500, { error: String(err) });
+      } finally {
+        wsBroadcaster?.broadcast({ type: "status_update", status: "idle" });
+        busy = false;
       }
       return;
     }
@@ -226,8 +235,8 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
 
         // Re-render to get updated controls from CLI context
         let previewResult: unknown = null;
-        if (onPreview) {
-          try { previewResult = await onPreview(); } catch { /* non-fatal */ }
+        if (onRerender) {
+          try { previewResult = await onRerender(); } catch { /* non-fatal */ }
         }
         const afterControls: VizControlDescriptor[] = (previewResult as any)?.controls ?? lastKnownControls;
         const stateAfter: Record<string, unknown> = {};
@@ -312,6 +321,7 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
         onPreview: null,
         onRollback: null,
         onInvoke: null,
+        onRerender: null,
         close: () => {
           wsBroadcaster?.close();
           server.close();
@@ -345,6 +355,10 @@ export async function startVizServer(opts: VizServerOptions): Promise<VizServer>
       Object.defineProperty(vizServer, "onInvoke", {
         get: () => onInvoke,
         set: (v) => { onInvoke = v; },
+      });
+      Object.defineProperty(vizServer, "onRerender", {
+        get: () => onRerender,
+        set: (v) => { onRerender = v; },
       });
       resolve(vizServer);
     });

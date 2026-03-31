@@ -137,8 +137,8 @@ describe("E2E: viz server REST API", () => {
     server.onInvoke = async () => {
       currentReplicas++;
     };
-    // onPreview simulates CLI re-render returning updated controls
-    server.onPreview = async () => ({
+    // onRerender simulates CLI re-render returning updated controls
+    server.onRerender = async () => ({
       controls: [{ name: "replicas", controlType: "input", inputType: "number", value: currentReplicas }],
     });
 
